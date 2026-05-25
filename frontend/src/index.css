@@ -39,6 +39,26 @@ body {
   scrollbar-color: #475569 transparent;
 }
 
+/* Alerts List Specific Scrollbar */
+.custom-scrollbar-alerts::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar-alerts::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar-alerts::-webkit-scrollbar-thumb {
+  background-color: rgba(140, 198, 63, 0.4); /* smart-light with opacity */
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.custom-scrollbar-alerts::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(140, 198, 63, 0.7);
+}
+
 @keyframes drift {
   from { transform: translate3d(-400px, 0, 0); }
   to { transform: translate3d(calc(100vw + 400px), 0, 0); }

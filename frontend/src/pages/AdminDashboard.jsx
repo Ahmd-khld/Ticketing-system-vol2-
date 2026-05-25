@@ -4532,26 +4532,29 @@ const AdminDashboard = () => {
                       </select>
                     </div>
 
-                    <div className="flex-grow overflow-y-auto overflow-x-auto h-[450px] custom-scrollbar">
-                      <table className="w-full text-left border-collapse">
-                        <thead className="sticky top-0 bg-smart-bg dark:bg-gray-900 z-10">
-                          <tr className="border-b border-smart-light/10 text-smart-gray dark:text-gray-500 text-[10px] font-black uppercase tracking-widest">
-                            <th className="px-4 py-3 pl-6 whitespace-nowrap text-left w-1/4">
-                              Date & Time
-                            </th>
-                            <th className="px-4 py-3 whitespace-nowrap text-center w-[100px]">
-                              Type
-                            </th>
-                            <th className="px-4 py-3 w-full text-left">Alert Message</th>
+                    {/* Table Header - Fixed at top */}
+                    <div className="bg-smart-bg dark:bg-gray-900 z-20 border-b border-smart-light/10">
+                      <table className="w-full text-left table-fixed">
+                        <thead>
+                          <tr className="text-smart-gray dark:text-gray-500 text-[10px] font-black uppercase tracking-widest">
+                            <th className="px-4 py-4 pl-6 w-1/4">Date & Time</th>
+                            <th className="px-4 py-4 text-center w-[120px]">Type</th>
+                            <th className="px-4 py-4 text-left">Alert Message</th>
                           </tr>
                         </thead>
+                      </table>
+                    </div>
+
+                    {/* Scrollable Alert List */}
+                    <div className="flex-grow overflow-y-auto overflow-x-hidden h-[450px] custom-scrollbar-alerts pr-2">
+                      <table className="w-full text-left table-fixed border-collapse">
                         <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
                           {Array.isArray(filteredAlerts) && filteredAlerts.map((alert) => (
                             <tr
                               key={alert._id || alert.id}
                               className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors"
                             >
-                              <td className="px-4 py-3 pl-6 whitespace-nowrap align-top text-left w-1/4">
+                              <td className="px-4 py-3 pl-6 align-top text-left w-1/4">
                                 <div className="text-sm font-bold text-smart-dark dark:text-gray-300">
                                   {alert.timeString || alert.time}
                                 </div>
@@ -4559,7 +4562,7 @@ const AdminDashboard = () => {
                                   {new Date(alert.createdAt).toLocaleDateString()}
                                 </div>
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap align-top text-center w-[100px]">
+                              <td className="px-4 py-3 align-top text-center w-[120px]">
                                 {alert.type === 'warning' && (
                                   <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 text-[9px] font-black px-2.5 py-1.5 rounded-md uppercase tracking-wider border border-yellow-200 dark:border-yellow-800 inline-block w-[72px] text-center">
                                     Warning
@@ -4586,7 +4589,7 @@ const AdminDashboard = () => {
                                   </span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-smart-dark dark:text-gray-200 font-medium text-sm leading-relaxed break-words align-top text-left w-full">
+                              <td className="px-4 py-3 text-smart-dark dark:text-gray-200 font-medium text-sm leading-relaxed break-words align-top text-left">
                                 {alert.message}
                               </td>
                             </tr>
