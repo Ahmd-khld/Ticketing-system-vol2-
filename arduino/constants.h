@@ -13,7 +13,7 @@
 #define WIFI_PASS "ParkSecure2024"
 
 // Server Configuration
-#define SERVER_IP "192.168.1.10"
+#define SERVER_IP "192.168.137.1"
 #define SERVER_PORT_HTTP 5000
 #define SERVER_PORT_HTTPS 443
 

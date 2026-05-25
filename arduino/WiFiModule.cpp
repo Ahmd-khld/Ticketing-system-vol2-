@@ -34,22 +34,39 @@ bool WiFiModule::begin(const char* ssid, const char* pass) {
         return true;
     }
 
-    Serial.println(F("[WiFi] Connection Failed."));
+    Serial.println(F("[WiFi] CRITICAL: Failed to connect to WiFi."));
     return false;
 }
 
 bool WiFiModule::sendAT(const String& cmd, const char* expected, unsigned long timeout) {
     flushSerial();
+    Serial.print(F("[WiFi] Sending AT: "));
+    Serial.println(cmd);
     _serial.println(cmd);
     return waitForResponse(expected, timeout);
 }
 
 bool WiFiModule::waitForResponse(const char* expected, unsigned long timeout) {
     unsigned long start = millis();
+    String response = "";
     while (millis() - start < timeout) {
-        if (_serial.find((char*)expected)) {
-            return true;
+        if (_serial.available()) {
+            char c = _serial.read();
+            response += c;
+            if (response.endsWith(expected)) {
+                return true;
+            }
         }
+    }
+    if (response.length() > 0) {
+        Serial.print(F("[WiFi] ERROR: Timeout waiting for '"));
+        Serial.print(expected);
+        Serial.println(F("'. Received:"));
+        Serial.println(response);
+    } else {
+        Serial.print(F("[WiFi] ERROR: No response for '"));
+        Serial.print(expected);
+        Serial.println(F("'"));
     }
     return false;
 }
