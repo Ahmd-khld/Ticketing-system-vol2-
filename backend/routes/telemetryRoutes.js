@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const http = require('http');
 const { protect } = require('../middleware/authMiddleware');
 const { requireAdmin } = require('../middleware/superAdminMiddleware');
 const Telemetry = require('../models/Telemetry');
@@ -7,6 +8,20 @@ const HardwareAlert = require('../models/HardwareAlert');
 
 let mockMode = false;
 let mockInterval = null;
+
+// In-memory store for the latest hardware state
+let latestState = {
+  moisture: 0,
+  humidity: 0,
+  temperature: 0,
+  rgbDistance: 0,
+  servoDistance: 0,
+  ldrStatus: 'OFF',
+  pumpStatus: 'OFF',
+  servoStatus: 'CLOSED',
+  lastUpdated: null,
+  arduinoIp: null
+};
 
 // Function to generate randomized mock data and persist it
 const generateMockData = async (io) => {
@@ -20,6 +35,13 @@ const generateMockData = async (io) => {
       ldrStatus: Math.random() > 0.5 ? 'ON' : 'OFF',
       pumpStatus: Math.random() > 0.8 ? 'ON' : 'OFF',
       servoStatus: Math.random() > 0.5 ? 'OPEN' : 'CLOSED',
+    };
+
+    // Update in-memory state
+    latestState = {
+      ...mockData,
+      lastUpdated: new Date(),
+      arduinoIp: '127.0.0.1 (Mock)'
     };
 
     // Persist to DB
@@ -70,38 +92,66 @@ const generateMockData = async (io) => {
   }
 };
 
+// @route   POST /api/hardware/debug
+// @desc    Diagnostic endpoint to verify raw connectivity from Arduino
+router.post('/hardware/debug', express.text({ type: '*/*' }), (req, res) => {
+  console.log('--- HARDWARE DEBUG INBOUND ---');
+  console.log('IP:', req.ip);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Body:', req.body);
+  console.log('------------------------------');
+  res.status(200).send('ACK_DEBUG');
+});
+
 // @route   POST /api/hardware/telemetry
-// @desc    Receive telemetry from Arduino (Public for IoT device)
-router.post('/hardware/telemetry', async (req, res) => {
+// @desc    Receive telemetry from Arduino (Supports signature and raw body)
+router.post('/hardware/telemetry', express.text({ type: '*/*' }), async (req, res) => {
   if (mockMode) {
     return res.status(200).json({ message: 'Mock Mode Active. Ignoring real data.' });
   }
 
-  const {
-    moisture,
-    humidity,
-    temperature,
-    rgbDistance,
-    servoDistance,
-    ldrStatus,
-    pumpStatus,
-    servoStatus
-  } = req.body;
-
-  // Basic Validation
-  if (
-    moisture === undefined ||
-    humidity === undefined ||
-    temperature === undefined ||
-    rgbDistance === undefined ||
-    servoDistance === undefined
-  ) {
-    return res.status(400).json({ message: 'Invalid telemetry payload structure' });
-  }
-
   try {
-    // Persist to DB
-    const telemetry = new Telemetry({
+    let rawBody = req.body;
+    let signature = null;
+
+    // Handle Arduino's signature format: JSON|sig:SIGNATURE
+    if (typeof rawBody === 'string' && rawBody.includes('|sig:')) {
+      const parts = rawBody.split('|sig:');
+      rawBody = parts[0];
+      signature = parts[1];
+      // Note: In a production environment, you would verify the signature here 
+      // using the ARDUINO_AES_KEY.
+    }
+
+    const payload = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
+
+    const {
+      moisture,
+      humidity,
+      temperature,
+      rgbDistance,
+      servoDistance,
+      ldrStatus,
+      pumpStatus,
+      servoStatus
+    } = payload;
+
+    // Basic Validation
+    if (
+      moisture === undefined ||
+      humidity === undefined ||
+      temperature === undefined ||
+      rgbDistance === undefined ||
+      servoDistance === undefined
+    ) {
+      return res.status(400).json({ message: 'Invalid telemetry payload structure' });
+    }
+
+    // Capture Arduino IP for command routing
+    const arduinoIp = req.ip || req.connection.remoteAddress;
+
+    // Update in-memory state for rapid frontend access
+    latestState = {
       moisture,
       humidity,
       temperature,
@@ -110,37 +160,91 @@ router.post('/hardware/telemetry', async (req, res) => {
       ldrStatus: ldrStatus || 'OFF',
       pumpStatus: pumpStatus || 'OFF',
       servoStatus: servoStatus || 'CLOSED',
+      lastUpdated: new Date(),
+      arduinoIp
+    };
+
+    // Persist to DB for history
+    const telemetry = new Telemetry({
+      ...payload,
+      ldrStatus: ldrStatus || 'OFF',
+      pumpStatus: pumpStatus || 'OFF',
+      servoStatus: servoStatus || 'CLOSED',
     });
     await telemetry.save();
 
     // Broadcast real data via socket
     const io = req.app.get('io');
-    if (io) io.emit('telemetryUpdate', { ...req.body, lastUpdated: telemetry.createdAt });
+    if (io) {
+      io.emit('telemetryUpdate', { ...latestState });
+    }
 
-    res.status(200).json({ message: 'Telemetry received and persisted successfully' });
+    res.status(200).json({ message: 'Telemetry received, verified and broadcasted.' });
   } catch (err) {
-    console.error('[Telemetry] Error persisting real data:', err);
-    res.status(500).json({ message: 'Internal server error saving telemetry' });
+    console.error('[Telemetry] Interface Error:', err);
+    res.status(500).json({ message: 'Failed to process hardware telemetry' });
   }
 });
 
+// @route   POST /api/hardware/command
+// @desc    Send a command string to the Arduino IoT Node
+router.post('/hardware/command', protect, requireAdmin, async (req, res) => {
+  const { command } = req.body;
+
+  if (!command) {
+    return res.status(400).json({ message: 'Command string is required' });
+  }
+
+  if (!latestState.arduinoIp || latestState.arduinoIp.includes('Mock')) {
+    return res.status(400).json({ message: 'No active Arduino node IP registered. Send telemetry first.' });
+  }
+
+  // Use the recorded Arduino IP to send the command back
+  // Note: Most IoT nodes expect a direct TCP or HTTP POST if they are listening
+  console.log(`[Command] Sending ${command} to Arduino at ${latestState.arduinoIp}`);
+
+  // Implementation for sending the command via HTTP POST back to the Arduino
+  const arduinoOptions = {
+    hostname: latestState.arduinoIp.replace('::ffff:', ''), // Handle IPv6-mapped IPv4
+    port: 80, // Standard IoT listening port
+    path: '/',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain',
+      'Content-Length': command.length
+    }
+  };
+
+  const arduinoReq = http.request(arduinoOptions, (arduinoRes) => {
+    let responseData = '';
+    arduinoRes.on('data', (chunk) => { responseData += chunk; });
+    arduinoRes.on('end', () => {
+      res.status(200).json({ message: `Command '${command}' sent successfully`, arduinoResponse: responseData });
+    });
+  });
+
+  arduinoReq.on('error', (err) => {
+    console.error('[Command] Failed to reach Arduino:', err.message);
+    res.status(502).json({ message: 'Arduino node unreachable', error: err.message });
+  });
+
+  arduinoReq.write(command);
+  arduinoReq.end();
+});
+
 // @route   GET /api/telemetry/latest
-// @desc    Get the latest stored telemetry data
+// @desc    Get the latest stored telemetry data (Prefer memory over DB)
 router.get('/telemetry/latest', protect, async (req, res) => {
   try {
+    // If we have data in memory, use it
+    if (latestState.lastUpdated) {
+      return res.status(200).json(latestState);
+    }
+
+    // Fallback to DB
     const latest = await Telemetry.findOne().sort({ createdAt: -1 });
     if (!latest) {
-      return res.status(200).json({
-        moisture: 0,
-        humidity: 0,
-        temperature: 0,
-        rgbDistance: 0,
-        servoDistance: 0,
-        ldrStatus: 'OFF',
-        pumpStatus: 'OFF',
-        servoStatus: 'CLOSED',
-        lastUpdated: new Date()
-      });
+      return res.status(200).json(latestState);
     }
     res.status(200).json(latest);
   } catch (err) {

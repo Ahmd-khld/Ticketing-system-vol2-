@@ -107,6 +107,9 @@ app.use(
     credentials: true,
   })
 );
+// Specialized Raw Body Parser for IoT Telemetry (Handles Arduino's Signature Format)
+app.use('/api/hardware/telemetry', express.text({ type: '*/*' }));
+
 app.use(express.json());
 
 // SAFE NOSQL SANITIZATION
@@ -310,6 +313,6 @@ app.use((err, req, res, next) => {
   res.status(statusCode).json({ message: err.message });
 });
 
-server.listen(PORT, () => {
-  console.log(`Backend server is running on http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Backend server is running on http://0.0.0.0:${PORT}`);
 });

@@ -9,16 +9,16 @@
  */
 
 // WiFi Credentials
-#define WIFI_SSID "SmartPark_Guest"
-#define WIFI_PASS "ParkSecure2024"
+#define WIFI_SSID "test"
+#define WIFI_PASS "12345678"
 
 // Server Configuration
-#define SERVER_IP "192.168.1.10"
+#define SERVER_IP "192.168.137.1"
 #define SERVER_PORT_HTTP 5000
 #define SERVER_PORT_HTTPS 443
 
 // System Parameters
-#define TELEMETRY_INTERVAL 10000 // Transmission every 10 seconds
+#define TELEMETRY_INTERVAL 1000 // Transmission every 10 seconds
 #define SSL_BUFFER_SIZE 2048     // ESP8266 SSL buffer
 
 // Security Keys

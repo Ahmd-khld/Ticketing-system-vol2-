@@ -9,7 +9,12 @@ bool InsecureSocket::post(const char* host, int port, const char* path, const St
     startCmd += "\",";
     startCmd += port;
 
-    if (!sendAT(startCmd, "CONNECT", 5000)) return false;
+    // Try to connect, accept either OK or CONNECT as success
+    _wifi.getSerial().println(startCmd);
+    if (!waitForResponse("OK", 5000) && !waitForResponse("CONNECT", 2000)) {
+        Serial.println(F("[Socket] TCP Connection Failed"));
+        return false;
+    }
 
     String signedPayload = signPayload(payload);
 
@@ -25,10 +30,11 @@ bool InsecureSocket::post(const char* host, int port, const char* path, const St
     String sendCmd = "AT+CIPSEND=0,";
     sendCmd += httpRequest.length();
 
-    if (sendAT(sendCmd, ">", 2000)) {
+    if (sendAT(sendCmd, ">", 3000)) {
         _wifi.getSerial().print(httpRequest);
-        bool success = waitForResponse("200 OK", 3000);
-        sendAT(F("AT+CIPCLOSE=0"), "OK", 1000);
+        bool success = waitForResponse("200 OK", 5000);
+        if (!success) Serial.println(F("[Socket] HTTP 200 Not Received"));
+        sendAT(F("AT+CIPCLOSE=0"), "OK", 2000);
         return success;
     }
 

@@ -3,7 +3,14 @@
 bool NetworkSocket::sendAT(const String& cmd, const char* expected, unsigned long timeout) {
     flushSerial();
     _wifi.getSerial().println(cmd);
-    return waitForResponse(expected, timeout);
+    bool result = waitForResponse(expected, timeout);
+    if (!result) {
+        Serial.print(F("[Socket] AT Failure: "));
+        Serial.print(cmd);
+        Serial.print(F(" -> Expected: "));
+        Serial.println(expected);
+    }
+    return result;
 }
 
 bool NetworkSocket::waitForResponse(const char* expected, unsigned long timeout) {
