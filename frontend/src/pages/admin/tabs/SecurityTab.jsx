@@ -237,7 +237,7 @@ const SecurityTab = () => {
                           )}
                         </td>
                         <td className="px-4 py-3 text-center font-mono text-[10px] text-smart-gray dark:text-gray-500 w-[150px]">{log.ipAddress}</td>
-                      </tr>
+                      </motion.tr>
                     ))}
                   </AnimatePresence>
                   {auditLogs.length === 0 && (

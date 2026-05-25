@@ -125,7 +125,7 @@ const Navbar = () => {
           {isAuthenticated && (role === 'admin' || role === 'sub-admin') && (
             <Link
               to="/admin/dashboard"
-              className="flex items-center space-x-2 bg-[#0B4228] border border-emerald-500/30 hover:border-emerald-500 text-emerald-400 hover:text-white px-5 py-2 rounded-xl font-black transition-all shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transform hover:-translate-y-0.5 whitespace-nowrap shrink-0"
+              className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black transition-all transform hover:-translate-y-0.5 whitespace-nowrap shrink-0 shadow-md"
             >
               <svg
                 className="w-4 h-4"
