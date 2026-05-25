@@ -84,23 +84,27 @@ void PeripheralInterface::runAutomation() {
     digitalWrite(PIN_LDR_LED, digitalRead(PIN_LDR_DO));
   }
 
-  int d = readRGBDistance();
-  int band = (d < 0) ? -1 : (d <= 5 ? 0 : (d <= 10 ? 1 : 2));
-  if (band != _lastRGBBand) {
-    if(band == 0) setRGB(255, 0, 0);
-    else if(band == 1) setRGB(255, 255, 0);
-    else if(band == 2) setRGB(0, 255, 0);
-    _lastRGBBand = band;
+  if (!manualRGBOverride) {
+    int d = readRGBDistance();
+    int band = (d < 0) ? -1 : (d <= 5 ? 0 : (d <= 10 ? 1 : 2));
+    if (band != _lastRGBBand) {
+      if(band == 0) setRGB(255, 0, 0);
+      else if(band == 1) setRGB(255, 255, 0);
+      else if(band == 2) setRGB(0, 255, 0);
+      _lastRGBBand = band;
+    }
   }
 
-  int m = readMoisture();
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();
-  if (m > 0 && m < 1023) {
-    if (m > DRY_THRESHOLD || (h < HUMIDITY_THRESHOLD && t > TEMP_THRESHOLD)) {
-      setPump(true);
-    } else {
-      setPump(false);
+  if (!manualPumpOverride) {
+    int m = readMoisture();
+    float h = dht.readHumidity();
+    float t = dht.readTemperature();
+    if (m > 0 && m < 1023) {
+      if (m > DRY_THRESHOLD || (h < HUMIDITY_THRESHOLD && t > TEMP_THRESHOLD)) {
+        setPump(true);
+      } else {
+        setPump(false);
+      }
     }
   }
 

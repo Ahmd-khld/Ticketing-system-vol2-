@@ -43,8 +43,11 @@ private:
   int _lastRGBBand = -1;
 
 public:
+  // Manual Overrides
   bool manualGateOverride = false;
   bool manualLampOverride = false;
+  bool manualPumpOverride = false;
+  bool manualRGBOverride = false;
 
   PeripheralInterface();
   void begin();
