@@ -129,30 +129,39 @@ const CollectionsTab = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left table-fixed border-collapse">
             <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
-              {filteredCashTickets.map(ticket => (
-                <tr key={ticket._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td className="px-6 py-5 font-mono text-[11px] font-black text-smart-dark dark:text-white w-1/4 overflow-hidden truncate">#{ticket._id.toString().slice(-8).toUpperCase()}</td>
-                  <td className="px-6 py-5 overflow-hidden">
-                    <div className="font-black text-smart-dark dark:text-white italic uppercase text-xs truncate">{ticket.userId?.name || 'Unknown User'}</div>
-                    <div className="text-[10px] text-smart-gray dark:text-gray-400 font-medium truncate">{ticket.userId?.email || 'N/A'}</div>
-                  </td>
-                  <td className="px-6 py-5 text-center w-[150px]"><span className="text-lg font-black text-smart-dark dark:text-smart-glow italic">{ticket.price} EGP</span></td>
-                  <td className="px-6 py-5 pr-8 text-right w-1/4">
-                    {ticket.paymentStatus === 'PENDING' ? (
-                      <motion.button 
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleConfirmCash(ticket._id, ticket.price)} 
-                        className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
-                      >
-                        Collect
-                      </motion.button>
-                    ) : (
-                      <span className="bg-smart-light/10 text-smart-dark dark:text-smart-glow text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest border border-smart-light/20">Collected</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              <AnimatePresence mode="popLayout">
+                {filteredCashTickets.map((ticket, idx) => (
+                  <motion.tr 
+                    key={ticket._id}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.2) }}
+                    className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors"
+                  >
+                    <td className="px-6 py-5 font-mono text-[11px] font-black text-smart-dark dark:text-white w-1/4 overflow-hidden truncate">#{ticket._id.toString().slice(-8).toUpperCase()}</td>
+                    <td className="px-6 py-5 overflow-hidden">
+                      <div className="font-black text-smart-dark dark:text-white italic uppercase text-xs truncate">{ticket.userId?.name || 'Unknown User'}</div>
+                      <div className="text-[10px] text-smart-gray dark:text-gray-400 font-medium truncate">{ticket.userId?.email || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-5 text-center w-[150px]"><span className="text-lg font-black text-smart-dark dark:text-smart-glow italic">{ticket.price} EGP</span></td>
+                    <td className="px-6 py-5 pr-8 text-right w-1/4">
+                      {ticket.paymentStatus === 'PENDING' ? (
+                        <motion.button 
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleConfirmCash(ticket._id, ticket.price)} 
+                          className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
+                        >
+                          Collect
+                        </motion.button>
+                      ) : (
+                        <span className="bg-smart-light/10 text-smart-dark dark:text-smart-glow text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest border border-smart-light/20">Collected</span>
+                      )}
+                    </td>
+                  </motion.tr>
+                ))}
+              </AnimatePresence>
               {!isLoadingPendingCash && filteredCashTickets.length === 0 && (
                 <tr><td colSpan="4" className="p-8 text-center text-smart-gray font-black uppercase tracking-widest text-[10px]">No tickets found matching your criteria.</td></tr>
               )}

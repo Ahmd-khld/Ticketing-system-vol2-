@@ -243,41 +243,51 @@ const UsersTab = ({ isSuperAdmin }) => {
           <div className="overflow-x-auto">
             <table className="w-full text-left table-fixed border-collapse">
               <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
-                {Array.isArray(filteredUsers) && filteredUsers.map((user) => (
-                  <tr 
-                    key={user._id} 
-                    className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors italic capitalize"
-                  >
-                    <td className="px-4 py-3 pl-6 font-black text-smart-dark dark:text-white w-1/4 overflow-hidden truncate">{user.name}</td>
-                    <td className="px-4 py-3 text-smart-gray dark:text-gray-400 font-medium w-1/4 overflow-hidden truncate italic-none">{user.email}</td>
-                    <td className="px-4 py-3 text-center w-[80px]">
-                      <span className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full font-black text-[11px] border border-blue-500/20">{user.ticketCount || 0}</span>
-                    </td>
-                    <td className="px-4 py-3 text-center w-[150px]">
-                      <div className="flex flex-col items-center space-y-1">
-                        {user.isRestricted ? (
-                          <motion.button 
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => showModal(user.restrictionReason || 'No reason provided', 'Restriction Details', 'warning')} 
-                            className="bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-orange-200 dark:border-orange-800 hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
-                          >
-                            Restricted
-                          </motion.button>
-                        ) : (
-                          <span className="bg-smart-light/10 dark:bg-smart-light/20 text-smart-dark dark:text-smart-glow text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-smart-light/20">Active</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 pr-6 text-right">
-                      <div className="flex justify-end items-center space-x-2">
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => navigate(`/admin/users/${user._id}/tickets`)} className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-200 dark:border-blue-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm">View</motion.button>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleRestrictUser(user._id, user.isRestricted)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${user.isRestricted ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-200 dark:border-orange-800 shadow-sm'}`}>{user.isRestricted ? 'Unrestrict' : 'Restrict'}</motion.button>
-                        {isSuperAdmin && <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleDeleteUser(user._id)} className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 shadow-sm">Delete</motion.button>}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                <AnimatePresence mode="popLayout">
+                  {Array.isArray(filteredUsers) && filteredUsers.map((user, idx) => (
+                    <motion.tr 
+                      key={user._id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={{ 
+                        duration: 0.2, 
+                        delay: Math.min(idx * 0.03, 0.3),
+                        ease: "easeOut"
+                      }}
+                      className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors italic capitalize"
+                    >
+                      <td className="px-4 py-3 pl-6 font-black text-smart-dark dark:text-white w-1/4 overflow-hidden truncate">{user.name}</td>
+                      <td className="px-4 py-3 text-smart-gray dark:text-gray-400 font-medium w-1/4 overflow-hidden truncate italic-none">{user.email}</td>
+                      <td className="px-4 py-3 text-center w-[80px]">
+                        <span className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full font-black text-[11px] border border-blue-500/20">{user.ticketCount || 0}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center w-[150px]">
+                        <div className="flex flex-col items-center space-y-1">
+                          {user.isRestricted ? (
+                            <motion.button 
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => showModal(user.restrictionReason || 'No reason provided', 'Restriction Details', 'warning')} 
+                              className="bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-orange-200 dark:border-orange-800 hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
+                            >
+                              Restricted
+                            </motion.button>
+                          ) : (
+                            <span className="bg-smart-light/10 dark:bg-smart-light/20 text-smart-dark dark:text-smart-glow text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-smart-light/20">Active</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 pr-6 text-right">
+                        <div className="flex justify-end items-center space-x-2">
+                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => navigate(`/admin/users/${user._id}/tickets`)} className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-200 dark:border-blue-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm">View</motion.button>
+                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleRestrictUser(user._id, user.isRestricted)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${user.isRestricted ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-200 dark:border-orange-800 shadow-sm'}`}>{user.isRestricted ? 'Unrestrict' : 'Restrict'}</motion.button>
+                          {isSuperAdmin && <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleDeleteUser(user._id)} className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 shadow-sm">Delete</motion.button>}
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
                 {(!regularUsers || regularUsers.length === 0) && (
                   <tr>
                     <td colSpan="5" className="p-8 text-center text-smart-gray dark:text-gray-500 font-black uppercase tracking-widest text-[10px]">No users found matching your criteria.</td>

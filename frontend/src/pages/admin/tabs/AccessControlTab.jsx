@@ -248,7 +248,7 @@ const AccessControlTab = ({ isSuperAdmin }) => {
       {/* Sub-Admin Accounts Panel */}
       {activeSubTab === 'sub-admins' && (
         <div 
-          className="mb-10 bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 overflow-hidden transition-all duration-500"
+          className="mb-10 bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 overflow-hidden"
         >
           <div className="bg-smart-bg dark:bg-gray-900 px-8 py-6 border-b border-smart-light/10 flex justify-between items-center cursor-default hover:bg-smart-bg/80 dark:hover:bg-gray-800 transition-colors" onClick={() => setIsSubAdminsExpanded(!isSubAdminsExpanded)}>
             <h2 className="text-xl font-black text-smart-dark dark:text-white flex items-center tracking-tighter uppercase italic select-none">
@@ -293,35 +293,44 @@ const AccessControlTab = ({ isSuperAdmin }) => {
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left table-fixed border-collapse">
               <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
-                {filteredSubAdmins.map((admin) => (
-                  <tr key={admin._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="px-4 py-3 pl-6 font-black text-smart-dark dark:text-white italic capitalize w-1/4 overflow-hidden truncate">
-                      {admin.name}
-                      {admin.email === superAdminEmail && <span className="ml-3 text-[9px] bg-purple-500/20 text-purple-500 px-2 py-0.5 rounded-full uppercase tracking-widest not-italic">System Owner</span>}
-                    </td>
-                    <td className="px-4 py-3 text-smart-gray dark:text-gray-400 font-medium w-1/4 overflow-hidden truncate">{admin.email}</td>
-                    <td className="px-4 py-3 text-center w-[150px]">
-                      <div className="flex flex-col items-center space-y-1">
-                        {admin.isRestricted ? (
-                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => showModal(admin.restrictionReason || 'No reason provided', 'Restriction Details', 'warning')} className="bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-orange-200 dark:border-orange-800 hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors">Restricted</motion.button>
+                <AnimatePresence mode="popLayout">
+                  {filteredSubAdmins.map((admin, idx) => (
+                    <motion.tr 
+                      key={admin._id}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.2) }}
+                      className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors"
+                    >
+                      <td className="px-4 py-3 pl-6 font-black text-smart-dark dark:text-white italic capitalize w-1/4 overflow-hidden truncate">
+                        {admin.name}
+                        {admin.email === superAdminEmail && <span className="ml-3 text-[9px] bg-purple-500/20 text-purple-500 px-2 py-0.5 rounded-full uppercase tracking-widest not-italic">System Owner</span>}
+                      </td>
+                      <td className="px-4 py-3 text-smart-gray dark:text-gray-400 font-medium w-1/4 overflow-hidden truncate">{admin.email}</td>
+                      <td className="px-4 py-3 text-center w-[150px]">
+                        <div className="flex flex-col items-center space-y-1">
+                          {admin.isRestricted ? (
+                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => showModal(admin.restrictionReason || 'No reason provided', 'Restriction Details', 'warning')} className="bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-orange-200 dark:border-orange-800 hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors">Restricted</motion.button>
+                          ) : (
+                            <span className="bg-smart-light/10 dark:bg-smart-light/20 text-smart-dark dark:text-smart-glow text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-smart-light/20">Active</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 pr-6 text-right space-x-2">
+                        {admin.email !== superAdminEmail ? (
+                          <>
+                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => navigate(`/admin/users/${admin._id}/tickets`, { state: { userName: admin.name, fromTab: 'access' } })} className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-200 dark:border-blue-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm">View</motion.button>
+                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleRestrictUser(admin._id, admin.isRestricted)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${admin.isRestricted ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-200 dark:border-orange-800 shadow-sm'}`}>{admin.isRestricted ? 'Unrestrict' : 'Restrict'}</motion.button>
+                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleDeleteUser(admin._id)} className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 shadow-sm">Delete</motion.button>
+                          </>
                         ) : (
-                          <span className="bg-smart-light/10 dark:bg-smart-light/20 text-smart-dark dark:text-smart-glow text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-smart-light/20">Active</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-smart-gray dark:text-gray-500 mr-2">Protected</span>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 pr-6 text-right space-x-2">
-                      {admin.email !== superAdminEmail ? (
-                        <>
-                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => navigate(`/admin/users/${admin._id}/tickets`, { state: { userName: admin.name, fromTab: 'access' } })} className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-200 dark:border-blue-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm">View</motion.button>
-                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleRestrictUser(admin._id, admin.isRestricted)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${admin.isRestricted ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-200 dark:border-orange-800 shadow-sm'}`}>{admin.isRestricted ? 'Unrestrict' : 'Restrict'}</motion.button>
-                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleDeleteUser(admin._id)} className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 shadow-sm">Delete</motion.button>
-                        </>
-                      ) : (
-                        <span className="text-[10px] font-black uppercase tracking-widest text-smart-gray dark:text-gray-500 mr-2">Protected</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
                 {filteredSubAdmins.length === 0 && (
                   <tr><td colSpan="4" className="p-8 text-center text-smart-gray dark:text-gray-500 font-black uppercase tracking-widest text-[10px]">No administrative accounts found matching your criteria.</td></tr>
                 )}
@@ -478,17 +487,26 @@ const AccessControlTab = ({ isSuperAdmin }) => {
             <div className="overflow-x-auto">
               <table className="w-full text-left table-fixed border-collapse">
                 <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
-                  {whitelistedIPs.map(ip => (
-                    <tr key={ip._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="px-6 py-4 font-mono text-[13px] font-bold text-smart-dark dark:text-white w-1/4 overflow-hidden truncate">{ip.ipAddress}</td>
-                      <td className="px-6 py-4 font-mono text-xs text-smart-gray dark:text-gray-400 font-medium w-80 overflow-hidden truncate">{ip.macAddress || 'N/A'}</td>
-                      <td className="px-6 py-4 text-xs text-smart-gray dark:text-gray-400 font-medium overflow-hidden truncate">{ip.description || 'N/A'}</td>
-                      <td className="px-4 py-3 text-[11px] font-bold text-smart-gray dark:text-gray-500 w-40">{new Date(ip.createdAt).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right pr-6 w-32">
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleRemoveWhitelistIP(ip._id)} className="px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[10px] font-black uppercase transition-colors border border-red-500/20">Remove</motion.button>
-                      </td>
-                    </tr>
-                  ))}
+                  <AnimatePresence mode="popLayout">
+                    {whitelistedIPs.map((ip, idx) => (
+                      <motion.tr 
+                        key={ip._id}
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.2) }}
+                        className="hover:bg-smart-bg/50 dark:hover:bg-gray-800/50 transition-colors"
+                      >
+                        <td className="px-6 py-4 font-mono text-[13px] font-bold text-smart-dark dark:text-white w-1/4 overflow-hidden truncate">{ip.ipAddress}</td>
+                        <td className="px-6 py-4 font-mono text-xs text-smart-gray dark:text-gray-400 font-medium w-80 overflow-hidden truncate">{ip.macAddress || 'N/A'}</td>
+                        <td className="px-6 py-4 text-xs text-smart-gray dark:text-gray-400 font-medium overflow-hidden truncate">{ip.description || 'N/A'}</td>
+                        <td className="px-4 py-3 text-[11px] font-bold text-smart-gray dark:text-gray-500 w-40">{new Date(ip.createdAt).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right pr-6 w-32">
+                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleRemoveWhitelistIP(ip._id)} className="px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[10px] font-black uppercase transition-colors border border-red-500/20">Remove</motion.button>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </AnimatePresence>
                   {whitelistedIPs.length === 0 && (
                     <tr><td colSpan="5" className="p-8 text-center text-smart-gray dark:text-gray-500 font-black uppercase tracking-widest text-[10px]">No whitelisted nodes found.</td></tr>
                   )}

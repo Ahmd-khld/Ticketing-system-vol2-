@@ -90,22 +90,31 @@ const SystemTab = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
-            {backups.map((backup) => (
-              <tr key={backup._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors">
-                <td className="px-8 py-4 font-mono text-[11px] text-smart-dark dark:text-white truncate italic">{backup.filename}</td>
-                <td className="px-8 py-4 text-[11px] font-bold text-smart-gray dark:text-gray-400">{new Date(backup.createdAt).toLocaleString()}</td>
-                <td className="px-8 py-4 text-right pr-12">
-                  <motion.button 
-                    whileHover={{ x: -5 }}
-                    onClick={() => handleDownloadBackup(backup.filename)} 
-                    className="text-blue-500 hover:text-blue-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-end ml-auto"
-                  >
-                    <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Download Snapshot
-                  </motion.button>
-                </td>
-              </tr>
-            ))}
+            <AnimatePresence mode="popLayout">
+              {backups.map((backup, idx) => (
+                <motion.tr 
+                  key={backup._id}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.2) }}
+                  className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors"
+                >
+                  <td className="px-8 py-4 font-mono text-[11px] text-smart-dark dark:text-white truncate italic">{backup.filename}</td>
+                  <td className="px-8 py-4 text-[11px] font-bold text-smart-gray dark:text-gray-400">{new Date(backup.createdAt).toLocaleString()}</td>
+                  <td className="px-8 py-4 text-right pr-12">
+                    <motion.button 
+                      whileHover={{ x: -5 }}
+                      onClick={() => handleDownloadBackup(backup.filename)} 
+                      className="text-blue-500 hover:text-blue-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-end ml-auto"
+                    >
+                      <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                      Download Snapshot
+                    </motion.button>
+                  </td>
+                </motion.tr>
+              ))}
+            </AnimatePresence>
             {backups.length === 0 && !isLoading && (
               <tr><td colSpan="3" className="p-12 text-center text-smart-gray font-black uppercase tracking-widest">No system snapshots archived.</td></tr>
             )}

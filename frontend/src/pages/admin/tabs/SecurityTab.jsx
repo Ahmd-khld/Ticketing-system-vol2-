@@ -212,25 +212,34 @@ const SecurityTab = () => {
             <div className="overflow-x-auto flex-grow custom-scrollbar">
               <table className="w-full text-left table-fixed border-collapse">
                 <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
-                  {auditLogs.map(log => (
-                    <tr key={log._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors">
-                      <td className="px-4 py-3 pl-6 text-[11px] font-bold text-smart-gray dark:text-gray-400 w-[200px]">{new Date(log.createdAt).toLocaleString()}</td>
-                      <td className="px-4 py-3 font-black text-smart-dark dark:text-white italic w-1/4 overflow-hidden truncate">{log.email}</td>
-                      <td className="px-4 py-3 font-medium text-smart-dark dark:text-gray-300 overflow-hidden truncate">{log.action || 'Authentication / System'}</td>
-                      <td className="px-4 py-3 text-center w-[120px]">
-                        {log.status === 'success' ? (
-                          <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-green-200 dark:border-green-800 inline-block w-[80px] text-center">
-                            Success
-                          </span>
-                        ) : (
-                          <span className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-red-200 dark:border-red-800 inline-block w-[80px] text-center">
-                            Failed
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center font-mono text-[10px] text-smart-gray dark:text-gray-500 w-[150px]">{log.ipAddress}</td>
-                    </tr>
-                  ))}
+                  <AnimatePresence mode="popLayout">
+                    {auditLogs.map((log, idx) => (
+                      <motion.tr 
+                        key={log._id}
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.2) }}
+                        className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors"
+                      >
+                        <td className="px-4 py-3 pl-6 text-[11px] font-bold text-smart-gray dark:text-gray-400 w-[200px]">{new Date(log.createdAt).toLocaleString()}</td>
+                        <td className="px-4 py-3 font-black text-smart-dark dark:text-white italic w-1/4 overflow-hidden truncate">{log.email}</td>
+                        <td className="px-4 py-3 font-medium text-smart-dark dark:text-gray-300 overflow-hidden truncate">{log.action || 'Authentication / System'}</td>
+                        <td className="px-4 py-3 text-center w-[120px]">
+                          {log.status === 'success' ? (
+                            <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-green-200 dark:border-green-800 inline-block w-[80px] text-center">
+                              Success
+                            </span>
+                          ) : (
+                            <span className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-red-200 dark:border-red-800 inline-block w-[80px] text-center">
+                              Failed
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center font-mono text-[10px] text-smart-gray dark:text-gray-500 w-[150px]">{log.ipAddress}</td>
+                      </tr>
+                    ))}
+                  </AnimatePresence>
                   {auditLogs.length === 0 && (
                     <tr><td colSpan="5" className="p-8 text-center text-smart-gray dark:text-gray-500 font-black uppercase tracking-widest text-[10px]">No audit logs found.</td></tr>
                   )}

@@ -369,31 +369,37 @@ const HardwareTab = ({ isSuperAdmin }) => {
         <div className="flex-grow overflow-x-hidden pr-2">
           <table className="w-full text-left table-fixed border-collapse">
             <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
-              {Array.isArray(filteredAlerts) && filteredAlerts.map((alert) => (
-                <tr 
-                  key={alert._id || alert.id} 
-                  className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  <td className="px-4 py-3 pl-6 align-top text-left w-1/4">
-                    <div className="text-sm font-bold text-smart-dark dark:text-gray-300 italic">{alert.timeString || alert.time}</div>
-                    <div className="text-xs font-bold text-smart-gray dark:text-gray-500 uppercase mt-0.5">{new Date(alert.createdAt).toLocaleDateString()}</div>
-                  </td>
-                  <td className="px-4 py-3 align-top text-center w-[120px]">
-                    <span className={`text-[9px] font-black px-2.5 py-1.5 rounded-md uppercase tracking-wider border inline-block w-[72px] text-center ${
-                      alert.type === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800' :
-                      alert.type === 'info' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-800' :
-                      alert.type === 'action' ? 'bg-smart-light/10 dark:bg-smart-light/20 text-smart-dark dark:text-smart-glow border-smart-light/20' :
-                      alert.type === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800' :
-                      'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800'
-                    }`}>
-                      {alert.type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-smart-dark dark:text-gray-200 font-medium text-sm leading-relaxed break-words align-top text-left italic">
-                    {alert.message}
-                  </td>
-                </tr>
-              ))}
+              <AnimatePresence mode="popLayout">
+                {Array.isArray(filteredAlerts) && filteredAlerts.map((alert, idx) => (
+                  <motion.tr 
+                    key={alert._id || alert.id}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.2) }}
+                    className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors"
+                  >
+                    <td className="px-4 py-3 pl-6 align-top text-left w-1/4">
+                      <div className="text-sm font-bold text-smart-dark dark:text-gray-300 italic">{alert.timeString || alert.time}</div>
+                      <div className="text-xs font-bold text-smart-gray dark:text-gray-500 uppercase mt-0.5">{new Date(alert.createdAt).toLocaleDateString()}</div>
+                    </td>
+                    <td className="px-4 py-3 align-top text-center w-[120px]">
+                      <span className={`text-[9px] font-black px-2.5 py-1.5 rounded-md uppercase tracking-wider border inline-block w-[72px] text-center ${
+                        alert.type === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800' :
+                        alert.type === 'info' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-800' :
+                        alert.type === 'action' ? 'bg-smart-light/10 dark:bg-smart-light/20 text-smart-dark dark:text-smart-glow border-smart-light/20' :
+                        alert.type === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800' :
+                        'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800'
+                      }`}>
+                        {alert.type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-smart-dark dark:text-gray-200 font-medium text-sm leading-relaxed break-words align-top text-left italic">
+                      {alert.message}
+                    </td>
+                  </motion.tr>
+                ))}
+              </AnimatePresence>
               {(!filteredAlerts || filteredAlerts.length === 0) && (
                 <tr>
                   <td colSpan="3" className="p-8 text-center text-smart-gray dark:text-gray-500 font-black uppercase tracking-widest text-[10px]">No hardware alerts detected.</td>
