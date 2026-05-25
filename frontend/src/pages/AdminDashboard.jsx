@@ -91,8 +91,8 @@ const AdminDashboard = () => {
   const [whitelistHasMore, setWhitelistHasMore] = useState(false);
   const [isLoadingWhitelist, setIsLoadingWhitelist] = useState(false);
   const {
-    alerts,
-    setAlerts,
+    alerts: masterAlertList,
+    setAlerts: setMasterAlertList,
     totalAlertsCount,
     setTotalAlertsCount,
     telemetryMatrix,
@@ -101,6 +101,15 @@ const AdminDashboard = () => {
   const [alertPage, setAlertPage] = useState(1);
   const [totalAlertPages, setTotalAlertPages] = useState(1);
   const [isLoadingAlerts, setIsLoadingAlerts] = useState(false);
+
+  // Derivation: Displayed Alert List (Rigorous Filter)
+  // This is our Displayed Alert List, strictly derived from the Master Alert List.
+  const filteredAlerts = useMemo(() => {
+    return masterAlertList.filter((alert) => {
+      if (alertFilterType === 'all') return true;
+      return alert.type === alertFilterType;
+    });
+  }, [masterAlertList, alertFilterType]);
 
   const [userPage, setUserPage] = useState(1);
 
@@ -335,19 +344,19 @@ const AdminDashboard = () => {
         });
         setMonthlySales(salesRes.data);
 
-        const alertsRes = await api.get('/admin/hardware-alerts', {
+        const masterAlertListRes = await api.get('/admin/hardware-alerts', {
           params: { page: 1, limit: 10 },
           headers: { Authorization: `Bearer ${token}` },
         });
-        const backendAlerts = alertsRes.data.alerts || (Array.isArray(alertsRes.data) ? alertsRes.data : []);
-        setAlerts((prev) => {
+        const backendAlerts = masterAlertListRes.data.alerts || (Array.isArray(masterAlertListRes.data) ? masterAlertListRes.data : []);
+        setMasterAlertList((prev) => {
           // Merge logic: take backend alerts, and append current alerts that aren't in the backend list
           const backendIds = new Set(backendAlerts.map(a => a._id));
           const uniqueCurrent = prev.filter(a => !backendIds.has(a._id));
           return [...backendAlerts, ...uniqueCurrent].slice(0, 100);
         });
-        setTotalAlertPages(alertsRes.data.totalPages || 1);
-        setTotalAlertsCount(alertsRes.data.totalAlerts || 0);
+        setTotalAlertPages(masterAlertListRes.data.totalPages || 1);
+        setTotalAlertsCount(masterAlertListRes.data.totalAlerts || 0);
       } catch (error) {
         if (error.response?.status === 401) {
           handleLogout();
@@ -770,6 +779,29 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleToggleMockTelemetry = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await api.post(
+        '/telemetry/toggle-mock',
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      showModal(
+        response.data.message || 'Telemetry mock mode updated!',
+        'Mock Mode Toggled',
+        'success'
+      );
+    } catch (error) {
+      console.error('Toggle Mock Telemetry Error:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to toggle mock telemetry';
+      showModal(errorMessage, 'Error', 'error');
+    }
+  };
+
   const handleGenerateDummyTickets = async () => {
     const token = localStorage.getItem('token');
     try {
@@ -789,15 +821,14 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Generate Mock Data Error:', error);
       const data = error.response?.data;
-      const errorMessage = data?.error 
+      const errorMessage = data?.error
         ? `${data.message}: ${data.error}`
         : (data?.message || 'Failed to generate mock data');
       showModal(errorMessage, 'Error', 'error');
     }
   };
 
-  const handleClearDummyData = async () => {
-    const isConfirmed = await showConfirm(
+  const handleClearDummyData = async () => {    const isConfirmed = await showConfirm(
       'Are you sure you want to delete all tickets? This will clear all chart data and cannot be undone.',
       'Clear Database'
     );
@@ -903,7 +934,7 @@ const AdminDashboard = () => {
 
   const handleClearHardwareAlerts = async () => {
     const isConfirmed = await showConfirm(
-      'Are you sure you want to completely clear all hardware alerts? This action cannot be undone.',
+      'Are you sure you want to completely clear all hardware masterAlertList? This action cannot be undone.',
       'Clear Alerts'
     );
     if (!isConfirmed) return;
@@ -912,10 +943,10 @@ const AdminDashboard = () => {
       await api.delete('/admin/hardware-alerts', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setAlerts([]); // Clear the local state alerts immediately
+      setAlerts([]); // Clear the local state masterAlertList immediately
     } catch (error) {
-      console.error('Failed to clear hardware alerts', error);
-      const errorMessage = error.response?.data?.message || 'Failed to clear hardware alerts';
+      console.error('Failed to clear hardware masterAlertList', error);
+      const errorMessage = error.response?.data?.message || 'Failed to clear hardware masterAlertList';
       showModal(errorMessage, 'Error', 'error');
     }
   };
@@ -1134,7 +1165,7 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = response.data;
-      setAlerts(data.alerts || (Array.isArray(data) ? data : []));
+      setMasterAlertList(data.alerts || (Array.isArray(data) ? data : []));
       setAlertPage(1);
       setTotalAlertPages(data.totalPages || 1);
       setTotalAlertsCount(data.totalAlerts || 0);
@@ -1162,12 +1193,12 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = response.data;
-      setAlerts(data.alerts || []);
+      setMasterAlertList(data.alerts || []);
       setAlertPage(data.currentPage);
       setTotalAlertPages(data.totalPages || 1);
       setTotalAlertsCount(data.totalAlerts || 0);
     } catch (error) {
-      console.error('Failed to load alerts page', error);
+      console.error('Failed to load masterAlertList page', error);
     } finally {
       if (!silent) setIsLoadingAlerts(false);
     }
@@ -1397,20 +1428,10 @@ const AdminDashboard = () => {
     };
     const onHardwareAlert = (newAlert) => {
       console.log('🔔 Received Real-time Hardware Alert:', newAlert);
-      const formattedAlert = {
-        _id: newAlert.id || newAlert._id,
-        message: newAlert.message,
-        type: newAlert.type,
-        timeString: newAlert.time || newAlert.timeString,
-        createdAt: newAlert.createdAt || new Date().toISOString(),
-      };
-      setAlerts((prevAlerts) => {
-        if (alertPageRef.current === 1) {
-          return [formattedAlert, ...prevAlerts].slice(0, 10);
-        }
-        return prevAlerts;
-      });
-      setTotalAlertsCount((prev) => prev + 1);
+      // NOTE: We no longer call setAlerts here because TelemetryContext 
+      // is already handling the Master Alert List updates via its own socket listener.
+      // This prevents the "Filter Bypass" bug and avoids redundant state updates.
+      
       if (!isHardwareAlertsExpandedRef.current) {
         setUnreadAlertsCount((prev) => prev + 1);
       }
@@ -1512,12 +1533,12 @@ const AdminDashboard = () => {
               headers: { Authorization: `Bearer ${token}` },
             });
             const json = res.data;
-            setAlerts(json.alerts || (Array.isArray(json) ? json : []));
+            setAlerts(json.masterAlertList || (Array.isArray(json) ? json : []));
             setAlertPage(1);
             setTotalAlertPages(json.totalPages || 1);
             setTotalAlertsCount(json.totalAlerts || 0);
           } catch (err) {
-            console.error('Failed to refetch hardware alerts after partial clear', err);
+            console.error('Failed to refetch hardware masterAlertList after partial clear', err);
           }
         }
       } else {
@@ -1818,15 +1839,6 @@ const AdminDashboard = () => {
       return newDate;
     });
   };
-
-  const filteredAlerts = useMemo(
-    () =>
-      alerts.filter((alert) => {
-        if (alertFilterType === 'all') return true;
-        return alert.type === alertFilterType;
-      }),
-    [alerts, alertFilterType]
-  );
 
   const handleExportBannedIPsCSV = async () => {
     const token = localStorage.getItem('token');
@@ -2747,7 +2759,7 @@ const AdminDashboard = () => {
 
               {/* Admin Quick Actions Row */}
               {isSuperAdmin && !isLoadingStats && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
                   <button
                     onClick={handleResetOccupancy}
                     className="py-4 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg hover:shadow-red-900/40 active:scale-95 flex flex-col items-center justify-center gap-2"
@@ -2775,6 +2787,20 @@ const AdminDashboard = () => {
                       ></path>
                     </svg>
                     Generate Data
+                  </button>
+                  <button
+                    onClick={handleToggleMockTelemetry}
+                    className="py-4 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg hover:shadow-orange-900/40 active:scale-95 flex flex-col items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      ></path>
+                    </svg>
+                    Mock Telemetry
                   </button>
                   <button
                     onClick={handleClearDummyData}
@@ -4456,7 +4482,7 @@ const AdminDashboard = () => {
                           handleClearHardwareAlerts();
                         }}
                         className="hidden sm:flex items-center mr-4 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-red-500/20"
-                        disabled={alerts.length === 0}
+                        disabled={masterAlertList.length === 0}
                       >
                         <svg
                           className="w-3 h-3 mr-1.5"
@@ -4571,7 +4597,7 @@ const AdminDashboard = () => {
                                 colSpan="3"
                                 className="p-8 text-center text-smart-gray dark:text-gray-500 font-black uppercase tracking-widest text-[10px]"
                               >
-                                No hardware alerts detected. Waiting for telemetry...
+                                No hardware masterAlertList detected. Waiting for telemetry...
                               </td>
                             </tr>
                           )}

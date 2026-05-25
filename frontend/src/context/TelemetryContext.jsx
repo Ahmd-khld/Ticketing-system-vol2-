@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { socket } from '../socket';
+import api from '../api';
 
 const TelemetryContext = createContext();
 
@@ -14,11 +15,47 @@ export const TelemetryProvider = ({ children }) => {
   const [alerts, setAlerts] = useState([]);
   const [totalAlertsCount, setTotalAlertsCount] = useState(0);
   const [telemetryMatrix, setTelemetryMatrix] = useState([
-    { id: 1, system: 'Ambient Lighting', error: 0, warning: 0, success: 12, info: 2, action: 0 },
-    { id: 2, system: 'Automated Gate', error: 1, warning: 0, success: 45, info: 4, action: 0 },
-    { id: 3, system: 'Smart Irrigation', error: 0, warning: 1, success: 1, info: 0, action: 1 },
-    { id: 4, system: 'Smart Recycle Bins', error: 0, warning: 1, success: 0, info: 0, action: 0 },
+    { id: 1, system: 'Ambient Lighting', error: 0, warning: 0, success: 0, info: 0, action: 0 },
+    { id: 2, system: 'Automated Gate', error: 0, warning: 0, success: 0, info: 0, action: 0 },
+    { id: 3, system: 'Smart Irrigation', error: 0, warning: 0, success: 0, info: 0, action: 0 },
+    { id: 4, system: 'Smart Recycle Bins', error: 0, warning: 0, success: 0, info: 0, action: 0 },
   ]);
+
+  const lastFetchRef = useRef(0);
+  const cacheDuration = 3000; // 3 seconds as requested
+
+  const fetchMatrixData = async (force = false) => {
+    const now = Date.now();
+    if (!force && now - lastFetchRef.current < cacheDuration) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const res = await api.get('/admin/hardware-stats', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const stats = res.data;
+      setTelemetryMatrix((prevMatrix) =>
+        prevMatrix.map((row) => {
+          const serverRow = stats[row.system];
+          if (serverRow) {
+            return {
+              ...row,
+              ...serverRow
+            };
+          }
+          return row;
+        })
+      );
+      lastFetchRef.current = now;
+    } catch (err) {
+      console.error('Failed to fetch hardware stats:', err);
+    }
+  };
 
   // Utility to update matrix based on a single alert
   const updateMatrixWithAlert = (alert) => {
@@ -49,6 +86,17 @@ export const TelemetryProvider = ({ children }) => {
     );
   };
 
+  // Initial fetch and polling
+  useEffect(() => {
+    fetchMatrixData(true);
+
+    const interval = setInterval(() => {
+      fetchMatrixData();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // --- Real-time WebSocket Logic ---
   useEffect(() => {
     const onHardwareAlert = (newAlert) => {
@@ -61,7 +109,7 @@ export const TelemetryProvider = ({ children }) => {
         createdAt: newAlert.createdAt || new Date().toISOString(),
       };
 
-      // 1. Update Feed (Keep global state in sync)
+      // 1. Update Feed
       setAlerts((prev) => {
         const exists = prev.find(a => a._id === formattedAlert._id);
         if (exists) return prev;
@@ -69,44 +117,34 @@ export const TelemetryProvider = ({ children }) => {
       });
       setTotalAlertsCount((prev) => prev + 1);
 
-      // 2. Update Matrix
+      // 2. Update Matrix Locally
       updateMatrixWithAlert(formattedAlert);
     };
 
+    const onHardwareAlertsCleared = () => {
+      // Reset matrix to zero
+      setTelemetryMatrix((prevMatrix) =>
+        prevMatrix.map((row) => ({
+          ...row,
+          error: 0,
+          warning: 0,
+          success: 0,
+          info: 0,
+          action: 0,
+        }))
+      );
+      setAlerts([]);
+      setTotalAlertsCount(0);
+      lastFetchRef.current = Date.now(); // Update cache ref so it doesn't immediately re-fetch old data
+    };
+
     socket.on('hardwareAlert', onHardwareAlert);
-    return () => socket.off('hardwareAlert', onHardwareAlert);
-  }, []);
+    socket.on('hardwareAlertsCleared', onHardwareAlertsCleared);
 
-  // --- Live Demo Mode Simulation ---
-  useEffect(() => {
-    const demoEvents = [
-      { system: 'Smart Irrigation', type: 'success', message: 'Automated irrigation cycle completed in Sector 2.' },
-      { system: 'Automated Gate', type: 'error', message: 'Unrecognized QR code scanned at Staff Entrance.' },
-      { system: 'Smart Recycle Bins', type: 'warning', message: 'Smart Bin #4 in Sector A is at 95% capacity.' },
-      { system: 'Automated Gate', type: 'info', message: 'RFID Ramp deployed successfully at West Gate.' },
-      { system: 'Ambient Lighting', type: 'info', message: 'Pathway lamps activated due to low ambient light.' },
-      { system: 'Smart Irrigation', type: 'warning', message: 'Zone C moisture dropped below 30%. Irrigation scheduled.' },
-    ];
-
-    const demoInterval = setInterval(() => {
-      const event = demoEvents[Math.floor(Math.random() * demoEvents.length)];
-      const timestamp = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
-      const newAlert = {
-        _id: `demo-${Date.now()}`,
-        message: event.message,
-        type: event.type,
-        system: event.system,
-        timeString: timestamp,
-        createdAt: new Date().toISOString(),
-      };
-
-      setAlerts((prev) => [newAlert, ...prev].slice(0, 100));
-      setTotalAlertsCount((prev) => prev + 1);
-      updateMatrixWithAlert(newAlert);
-    }, 3500);
-
-    return () => clearInterval(demoInterval);
+    return () => {
+      socket.off('hardwareAlert', onHardwareAlert);
+      socket.off('hardwareAlertsCleared', onHardwareAlertsCleared);
+    };
   }, []);
 
   return (
@@ -116,12 +154,14 @@ export const TelemetryProvider = ({ children }) => {
       totalAlertsCount, 
       setTotalAlertsCount,
       telemetryMatrix, 
-      setTelemetryMatrix 
+      setTelemetryMatrix,
+      fetchMatrixData
     }}>
       {children}
     </TelemetryContext.Provider>
   );
 };
+
 
 export const useTelemetry = () => {
   const context = useContext(TelemetryContext);

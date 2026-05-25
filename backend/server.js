@@ -31,6 +31,7 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const gameRoutes = require('./routes/gameRoutes');
 const otpRoutes = require('./routes/otpRoutes');
+const telemetryRoutes = require('./routes/telemetryRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -193,6 +194,7 @@ app.use('/api/grc', grcRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/promo', promoRoutes);
 app.use('/api/otp', otpRoutes);
+app.use('/api', telemetryRoutes);
 
 // TEMPORARY TEST TRIGGER FOR GRC DASHBOARD
 app.get('/api/admin/trigger-test-attack', async (req, res) => {
@@ -219,9 +221,13 @@ app.get('/api/admin/trigger-test-attack', async (req, res) => {
 app.delete('/api/admin/clear-dummy-tickets', requireSuperAdmin, async (req, res) => {
   try {
     await Ticket.deleteMany({});
-    await logAdminActionServer(req, 'Cleared all dummy ticket data');
-    if (io) io.emit('dataRefresh');
-    res.json({ message: 'Successfully cleared all dummy tickets!' });
+    await HardwareAlert.deleteMany({});
+    await logAdminActionServer(req, 'Cleared all dummy ticket and hardware data');
+    if (io) {
+      io.emit('dataRefresh');
+      io.emit('hardwareAlertsCleared');
+    }
+    res.json({ message: 'Successfully cleared all dummy data!' });
   } catch (error) {
     console.error('Clear Dummy Data Error:', error);
     res.status(500).json({ message: 'Failed to clear dummy tickets' });
