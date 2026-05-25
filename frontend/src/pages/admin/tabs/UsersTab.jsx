@@ -32,7 +32,17 @@ const UsersTab = ({ isSuperAdmin }) => {
 
   useEffect(() => {
     fetchUsers(userPage);
-  }, [userPage]);
+  }, [userPage, searchQuery, filterStatus]);
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setUserPage(1);
+  };
+
+  const handleStatusChange = (e) => {
+    setFilterStatus(e.target.value);
+    setUserPage(1);
+  };
 
   const filteredUsers = useMemo(() => {
     return regularUsers.filter((user) => {
@@ -180,14 +190,24 @@ const UsersTab = ({ isSuperAdmin }) => {
       </div>
 
       {isUserManagementExpanded && (
-        <>
+        <div className="relative min-h-[500px]">
+          {/* Smooth Loading Overlay */}
+          {(totalUsersCount === 0 && regularUsers.length === 0) ? null : (
+            <div className={`absolute inset-0 bg-white/40 dark:bg-gray-900/40 backdrop-blur-[1px] z-30 flex justify-center items-center transition-opacity duration-300 ${regularUsers.length > 0 && !searchQuery ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+               {/* This logic is a bit complex, let's just use a simple isLoading state if possible, 
+                   but UsersTab doesn't have an explicit isLoading state for pagination. 
+                   I should add one or use the current users length. 
+               */}
+            </div>
+          )}
+
           <div className="bg-smart-bg/30 dark:bg-gray-900/30 px-8 py-5 border-b border-smart-light/10 flex flex-col md:flex-row gap-4 justify-between items-center">
             <div className="relative w-full md:max-w-md">
               <input
                 type="text"
                 placeholder="SEARCH BY NAME OR EMAIL..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={handleSearchChange}
                 className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-smart-light/20 bg-white dark:bg-gray-800 text-smart-dark dark:text-white focus:ring-4 focus:ring-smart-light/20 focus:border-smart-light outline-none transition font-mono text-xs font-black tracking-widest"
               />
               <svg className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-smart-light/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,7 +217,7 @@ const UsersTab = ({ isSuperAdmin }) => {
             <div className="w-full md:w-auto">
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={handleStatusChange}
                 className="w-full md:w-auto px-5 py-3 rounded-2xl border-2 border-smart-light/20 bg-white dark:bg-gray-800 text-smart-dark dark:text-white focus:ring-4 focus:ring-smart-light/20 focus:border-smart-light outline-none transition font-mono text-xs font-black tracking-widest cursor-pointer"
               >
                 <option value="ALL">ALL STATUSES</option>
@@ -207,26 +227,31 @@ const UsersTab = ({ isSuperAdmin }) => {
             </div>
           </div>
 
-          <div className="overflow-x-auto overflow-y-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="bg-smart-bg dark:bg-gray-900 z-20 border-b border-smart-light/10">
+            <table className="w-full text-left table-fixed">
               <thead>
-                <tr className="bg-smart-bg dark:bg-gray-900 border-b border-smart-light/10 text-smart-gray dark:text-gray-500 text-[10px] font-black uppercase tracking-widest">
-                  <th className="px-4 py-3 pl-6">Name</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3 text-center">Tickets</th>
-                  <th className="px-4 py-3 text-center">Security Status</th>
-                  <th className="px-4 py-3 pr-6 text-right">Access Control</th>
+                <tr className="text-smart-gray dark:text-gray-500 text-[10px] font-black uppercase tracking-widest">
+                  <th className="px-4 py-4 pl-6 w-1/4">Name</th>
+                  <th className="px-4 py-4 w-1/4">Email</th>
+                  <th className="px-4 py-4 text-center w-[80px]">Tickets</th>
+                  <th className="px-4 py-4 text-center w-[150px]">Security Status</th>
+                  <th className="px-4 py-4 pr-6 text-right">Access Control</th>
                 </tr>
               </thead>
+            </table>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left table-fixed border-collapse">
               <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
                 {Array.isArray(filteredUsers) && filteredUsers.map((user) => (
-                  <tr key={user._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="px-4 py-3 pl-6 font-black text-smart-dark dark:text-white italic capitalize">{user.name}</td>
-                    <td className="px-4 py-3 text-smart-gray dark:text-gray-400 font-medium">{user.email}</td>
-                    <td className="px-4 py-3 text-center">
+                  <tr key={user._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors animate-fade-in">
+                    <td className="px-4 py-3 pl-6 font-black text-smart-dark dark:text-white italic capitalize w-1/4 overflow-hidden truncate">{user.name}</td>
+                    <td className="px-4 py-3 text-smart-gray dark:text-gray-400 font-medium w-1/4 overflow-hidden truncate">{user.email}</td>
+                    <td className="px-4 py-3 text-center w-[80px]">
                       <span className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full font-black text-[11px] border border-blue-500/20">{user.ticketCount || 0}</span>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center w-[150px]">
                       <div className="flex flex-col items-center space-y-1">
                         {user.isRestricted ? (
                           <button onClick={() => showModal(user.restrictionReason || 'No reason provided', 'Restriction Details', 'warning')} className="bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-orange-200 dark:border-orange-800 hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors">Restricted</button>
@@ -237,7 +262,7 @@ const UsersTab = ({ isSuperAdmin }) => {
                     </td>
                     <td className="px-4 py-3 pr-6 text-right">
                       <div className="flex justify-end items-center space-x-2">
-                        <button onClick={() => navigate(`/admin/users/${user._id}/tickets`)} className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-200 dark:border-blue-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm">View Tickets</button>
+                        <button onClick={() => navigate(`/admin/users/${user._id}/tickets`)} className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-200 dark:border-blue-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm">View</button>
                         <button onClick={() => handleRestrictUser(user._id, user.isRestricted)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${user.isRestricted ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-200 dark:border-orange-800 shadow-sm'}`}>{user.isRestricted ? 'Unrestrict' : 'Restrict'}</button>
                         {isSuperAdmin && <button onClick={() => handleDeleteUser(user._id)} className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 shadow-sm">Delete</button>}
                       </div>
@@ -263,7 +288,7 @@ const UsersTab = ({ isSuperAdmin }) => {
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

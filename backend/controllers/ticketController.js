@@ -594,8 +594,8 @@ const getTicketInsights = async (req, res) => {
 
       days.push({
         date: dateStr,
-        dayName: currentDate.toLocaleDateString('en-US', { weekday: 'short' }),
-        displayDate: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        dayName: currentDate.toLocaleDateString('en-US', { weekday: 'long' }),
+        displayDate: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         count,
         crowdLevel: getCrowdLevel(count),
         isToday: currentDate.toDateString() === new Date().toDateString(),

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Smile, Meh, Frown } from 'lucide-react';
 import api from '../../../api';
 import { useUI } from '../../../context/UIContext';
 
@@ -8,11 +9,33 @@ const OverviewTab = ({ isSuperAdmin }) => {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Availability Window State
+  const [insights, setInsights] = useState(null);
+  const [loadingInsights, setLoadingInsights] = useState(true);
+  const [insightStartDate, setInsightStartDate] = useState(new Date());
+
   // Historical Sales State
   const [monthlySales, setMonthlySales] = useState([]);
   const [salesStartDate, setSalesStartDate] = useState('');
   const [salesEndDate, setSalesEndDate] = useState('');
   const [isMonthlySalesExpanded, setIsMonthlySalesExpanded] = useState(true);
+
+  const fetchInsights = async () => {
+    setLoadingInsights(true);
+    try {
+      const token = localStorage.getItem('token');
+      const dateStr = insightStartDate.toISOString().split('T')[0];
+      const response = await api.get('/tickets/insights', {
+        params: { startDate: dateStr },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setInsights(response.data);
+    } catch (err) {
+      console.error('Failed to fetch insights:', err);
+    } finally {
+      setLoadingInsights(false);
+    }
+  };
 
   const fetchStats = async () => {
     const token = localStorage.getItem('token');
@@ -26,6 +49,8 @@ const OverviewTab = ({ isSuperAdmin }) => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMonthlySales(salesRes.data);
+      
+      await fetchInsights();
     } catch (error) {
       console.error('Failed to refresh stats', error);
     } finally {
@@ -36,6 +61,10 @@ const OverviewTab = ({ isSuperAdmin }) => {
   useEffect(() => {
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    fetchInsights();
+  }, [insightStartDate]);
 
   useEffect(() => {
     const fetchFilteredSales = async () => {
@@ -158,7 +187,12 @@ const OverviewTab = ({ isSuperAdmin }) => {
   };
 
   return (
-    <div className="p-4 md:p-8 bg-white dark:bg-gray-800/30 rounded-[40px] border border-smart-light/10 shadow-2xl mb-10 animate-fade-in-up w-full max-w-[1400px] mx-auto">
+    <div className="p-4 md:p-8 bg-white dark:bg-gray-800/30 rounded-[40px] border border-smart-light/10 shadow-2xl mb-10 animate-fade-in-up w-full max-w-[1400px] mx-auto relative min-h-[500px]">
+      {(isLoadingStats || isRefreshing) && (
+        <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-30 flex justify-center items-center rounded-[40px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-smart-light"></div>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-2xl font-black text-smart-dark dark:text-white uppercase italic tracking-tighter flex items-center">
           <svg className="w-8 h-8 mr-3 text-smart-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -260,6 +294,83 @@ const OverviewTab = ({ isSuperAdmin }) => {
               <span className="text-4xl font-black text-smart-dark dark:text-white italic leading-none">{stats?.purchasingUsers || 0}</span>
               <span className="text-smart-gray dark:text-gray-500 font-bold text-[10px] uppercase tracking-widest mt-1">of {stats?.activeUsers || 0} Total</span>
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Availability Window (Original Style Refactor - Admin View) */}
+      <div className="mb-12 bg-gray-50 dark:bg-gray-900 rounded-[40px] border-l-[8px] border-[#047857] overflow-hidden relative transition-all shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div className="p-8 sm:p-10">
+          <div className="flex flex-col xl:flex-row justify-between items-center mb-10 gap-6">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-[#047857]/10 rounded-xl">
+                <svg className="w-6 h-6 text-smart-dark dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+              </div>
+              <h3 className="text-lg font-black text-smart-dark dark:text-white italic uppercase tracking-wider">Availability Window</h3>
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => setInsightStartDate(p => new Date(new Date(p).setDate(p.getDate() - 7)))} className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition text-smart-dark dark:text-white font-bold">
+                &larr; Prev
+              </button>
+              <button onClick={() => setInsightStartDate(new Date())} className="px-4 py-1.5 bg-smart-light/10 text-smart-light rounded-lg text-xs font-bold hover:bg-smart-light/20 transition">
+                Today
+              </button>
+              <button onClick={() => setInsightStartDate(p => new Date(new Date(p).setDate(p.getDate() + 7)))} className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition text-smart-dark dark:text-white font-bold">
+                Next &rarr;
+              </button>
+            </div>
+          </div>
+
+          {loadingInsights ? (
+            <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-smart-light"></div></div>
+          ) : insights ? (
+            <>
+              <div className="grid grid-cols-7 gap-2 w-full mt-4 mb-10">
+                {insights.days.map((day, idx) => {
+                  const isToday = day.isToday;
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`flex flex-col items-center justify-center py-4 px-1 rounded-2xl transition-all cursor-default min-w-0 overflow-hidden border-2 ${
+                        isToday 
+                          ? 'bg-white dark:bg-[#2a303c] border-[#8cc63f] ring-4 ring-[#8cc63f]/10 shadow-lg z-10' 
+                          : 'bg-white dark:bg-gray-800 border-transparent hover:bg-gray-50 dark:hover:bg-[#2a303c] hover:border-black/5 dark:hover:border-white/10 shadow-sm'
+                      }`}
+                    >
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-tight w-full text-center">{day.dayName.slice(0, 3)}</span>
+                      <div className={`text-2xl md:text-3xl font-black my-1 italic tracking-tighter shrink-0 ${
+                        day.crowdLevel === 'quiet' ? 'text-green-500' : 
+                        day.crowdLevel === 'moderate' ? 'text-yellow-500' : 
+                        'text-red-500'
+                      }`}>{day.count}</div>
+                      <div className="mt-1 flex justify-center items-center w-full">
+                        {day.crowdLevel === 'quiet' ? <Smile className="w-6 h-6 text-green-500" /> : 
+                         day.crowdLevel === 'moderate' ? <Meh className="w-6 h-6 text-yellow-500" /> : 
+                         <Frown className="w-6 h-6 text-red-500" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-6 pt-8 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex items-center gap-2 px-4 py-2 bg-green-500/5 rounded-full border border-green-500/10 shadow-sm">
+                  <Smile className="w-4 h-4 text-green-500" />
+                  <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Quiet (0-30%)</span>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/5 rounded-full border border-yellow-500/10 shadow-sm">
+                  <Meh className="w-4 h-4 text-yellow-500" />
+                  <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Moderate (31-70%)</span>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-red-500/5 rounded-full border border-red-500/10 shadow-sm">
+                  <Frown className="w-4 h-4 text-red-500" />
+                  <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Busy (71-100%)</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="p-16 text-center text-gray-400 font-bold uppercase tracking-[0.2em] italic border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-3xl">Telemetry Stream Disconnected</div>
           )}
         </div>
       </div>

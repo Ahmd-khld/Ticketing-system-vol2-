@@ -7,20 +7,30 @@ const SystemTab = () => {
   const [backups, setBackups] = useState([]);
   const [isBackupsExpanded, setIsBackupsExpanded] = useState(true);
   const [restoringBackupFilename, setRestoringBackupFilename] = useState(null);
+  const [backupPage, setBackupPage] = useState(1);
+  const [totalBackupPages, setTotalBackupPages] = useState(1);
+  const [totalBackupsCount, setTotalBackupsCount] = useState(0);
 
-  const fetchBackups = async () => {
+  const fetchBackups = async (page = 1) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await api.get('/admin/backups', { headers: { Authorization: `Bearer ${token}` } });
-      setBackups(res.data || []);
+      const res = await api.get('/admin/backups', { 
+        params: { page, limit: 10 },
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+      const data = res.data;
+      setBackups(data.backups || []);
+      setTotalBackupsCount(data.totalBackups || 0);
+      setTotalBackupPages(data.totalPages || 1);
+      setBackupPage(data.currentPage || 1);
     } catch (err) {
       console.error('Failed to fetch backups', err);
     }
   };
 
   useEffect(() => {
-    fetchBackups();
-  }, []);
+    fetchBackups(backupPage);
+  }, [backupPage]);
 
   const handleDownloadBackup = async (filename) => {
     const token = localStorage.getItem('token');
@@ -87,64 +97,74 @@ const SystemTab = () => {
       </div>
 
       {isBackupsExpanded && (
-        <div className="overflow-y-auto overflow-x-auto flex-grow">
-          <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-smart-bg dark:bg-gray-900 z-10">
-              <tr className="border-b border-smart-light/10 text-smart-gray dark:text-gray-500 text-[10px] font-black uppercase tracking-widest">
-                <th className="px-4 py-3 pl-6">Filename</th>
-                <th className="px-4 py-3">Size</th>
-                <th className="px-4 py-3">Created On</th>
-                <th className="px-4 py-3 text-right pr-6">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
-              {backups.map(backup => (
-                <tr key={backup.filename} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td className="px-4 py-3 pl-6 font-mono text-[13px] font-bold text-smart-dark dark:text-white">{backup.filename}</td>
-                  <td className="px-4 py-3 text-xs text-smart-gray font-medium">{backup.size}</td>
-                  <td className="px-4 py-3 text-[11px] font-bold text-smart-gray dark:text-gray-500">{new Date(backup.createdAt).toLocaleString()}</td>
-                  <td className="px-4 py-3 pr-6 text-right flex justify-end space-x-2">
-                    <button
-                      onClick={() => handleDownloadBackup(backup.filename)}
-                      className="px-4 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-blue-500/20"
-                    >
-                      Download
-                    </button>
-                    <button
-                      onClick={() => handleRestoreBackup(backup.filename)}
-                      disabled={restoringBackupFilename === backup.filename}
-                      className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border flex items-center justify-center ${restoringBackupFilename === backup.filename ? 'bg-green-500/20 text-green-600 border-green-500/40 cursor-wait' : 'bg-green-500/10 hover:bg-green-500/20 text-green-500 border-green-500/20'}`}
-                    >
-                      {restoringBackupFilename === backup.filename ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Restoring
-                        </>
-                      ) : (
-                        'Restore'
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteBackup(backup.filename)}
-                      className="px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-red-500/20"
-                    >
-                      Delete
-                    </button>
-                  </td>
+        <div className="flex flex-col h-full">
+          <div className="bg-smart-bg dark:bg-gray-900 z-20 border-b border-smart-light/10">
+            <table className="w-full text-left table-fixed">
+              <thead>
+                <tr className="text-smart-gray dark:text-gray-500 text-[10px] font-black uppercase tracking-widest">
+                  <th className="px-4 py-4 pl-6 w-1/2">Filename</th>
+                  <th className="px-4 py-4 w-32">Size</th>
+                  <th className="px-4 py-4 w-48">Created On</th>
+                  <th className="px-4 py-4 text-right pr-6 w-[320px]">Actions</th>
                 </tr>
-              ))}
-              {(!backups || backups.length === 0) && (
-                <tr>
-                  <td colSpan="4" className="p-8 text-center text-smart-gray dark:text-gray-500 font-black uppercase tracking-widest text-[10px]">
-                    No backup files found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+            </table>
+          </div>
+
+          <div className="overflow-x-auto flex-grow custom-scrollbar">
+            <table className="w-full text-left table-fixed border-collapse">
+              <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
+                {backups.map(backup => (
+                  <tr key={backup.filename} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors">
+                    <td className="px-4 py-3 pl-6 font-mono text-[13px] font-bold text-smart-dark dark:text-white w-1/2 overflow-hidden truncate">{backup.filename}</td>
+                    <td className="px-4 py-3 text-xs text-smart-gray font-medium w-32">{backup.size}</td>
+                    <td className="px-4 py-3 text-[11px] font-bold text-smart-gray dark:text-gray-500 w-48">{new Date(backup.createdAt).toLocaleString()}</td>
+                    <td className="px-4 py-3 pr-6 text-right w-[320px]">
+                      <div className="flex justify-end items-center space-x-2">
+                        <button
+                          onClick={() => handleDownloadBackup(backup.filename)}
+                          className="px-4 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-blue-500/20"
+                        >
+                          Download
+                        </button>
+                        <button
+                          onClick={() => handleRestoreBackup(backup.filename)}
+                          disabled={restoringBackupFilename === backup.filename}
+                          className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border flex items-center justify-center ${restoringBackupFilename === backup.filename ? 'bg-green-500/20 text-green-600 border-green-500/40 cursor-wait' : 'bg-green-500/10 hover:bg-green-500/20 text-green-500 border-green-500/20'}`}
+                        >
+                          {restoringBackupFilename === backup.filename ? 'Restoring...' : 'Restore'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteBackup(backup.filename)}
+                          className="px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-red-500/20"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {(!backups || backups.length === 0) && (
+                  <tr>
+                    <td colSpan="4" className="p-8 text-center text-smart-gray dark:text-gray-500 font-black uppercase tracking-widest text-[10px]">
+                      No backup files found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {totalBackupPages > 1 && (
+        <div className="bg-smart-bg/30 dark:bg-gray-900/30 px-8 py-4 border-t border-smart-light/10 flex justify-between items-center">
+          <span className="text-[10px] font-bold text-smart-gray dark:text-gray-400 uppercase tracking-widest hidden sm:inline">Showing {(backupPage - 1) * 10 + 1} to {Math.min(backupPage * 10, totalBackupsCount)} of {totalBackupsCount}</span>
+          <div className="flex space-x-2 ml-auto sm:ml-0">
+            <button onClick={() => setBackupPage((p) => Math.max(1, p - 1))} disabled={backupPage === 1} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Prev</button>
+            <span className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-smart-dark dark:text-white flex items-center">Page {backupPage} of {totalBackupPages}</span>
+            <button onClick={() => setBackupPage((p) => Math.min(totalBackupPages, p + 1))} disabled={backupPage >= totalBackupPages} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Next</button>
+          </div>
         </div>
       )}
     </div>

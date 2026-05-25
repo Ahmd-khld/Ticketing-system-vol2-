@@ -11,52 +11,20 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Global Custom Scrollbar */
+/* Hide scrollbars globally but maintain scroll functionality */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px; /* For horizontal scrollbars */
+  display: none;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent; 
-  margin: 12px; /* Pulls the scrollbar away from top, bottom, left, and right edges */
-  border-radius: 9999px; /* Ensures the track itself is rounded */
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: #475569; /* Tailwind slate-600 */
-  border-radius: 9999px; /* Fully rounded pill shape */
-  border: 2px solid #0f172a; /* Creates a 'padding' illusion matching the dark bg */
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background-color: #64748b; /* Tailwind slate-500 on hover */
-}
-
-/* Firefox compatibility */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: #475569 transparent;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
-/* Alerts List Specific Scrollbar */
+/* Specific overrides for our previous custom scrollbar classes */
+.custom-scrollbar::-webkit-scrollbar,
 .custom-scrollbar-alerts::-webkit-scrollbar {
-  width: 8px;
-}
-
-.custom-scrollbar-alerts::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar-alerts::-webkit-scrollbar-thumb {
-  background-color: rgba(140, 198, 63, 0.4); /* smart-light with opacity */
-  border-radius: 9999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-.custom-scrollbar-alerts::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(140, 198, 63, 0.7);
+  display: none;
 }
 
 @keyframes drift {
@@ -64,9 +32,33 @@ body {
   to { transform: translate3d(calc(100vw + 400px), 0, 0); }
 }
 
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .animate-drift {
   animation: drift linear infinite;
   will-change: transform;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
 }
 
 /* Enable background visibility globally for dark mode */

@@ -284,7 +284,13 @@ const HardwareTab = ({ isSuperAdmin }) => {
       </div>
 
       {/* Hardware Alerts Table */}
-      <div id="hardware-alerts-panel" className="bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 flex flex-col overflow-hidden transition-all duration-300 w-full xl:w-2/3">
+      <div id="hardware-alerts-panel" className="bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 flex flex-col overflow-hidden transition-all duration-300 w-full xl:w-2/3 relative min-h-[500px]">
+        {isLoadingAlerts && (
+          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-30 flex justify-center items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-smart-light"></div>
+          </div>
+        )}
+        
         <div className="bg-smart-bg dark:bg-gray-900 px-6 sm:px-8 py-6 border-b border-smart-light/10 flex flex-col lg:flex-row justify-between items-center gap-4">
           <h2 className="text-xl font-black text-smart-dark dark:text-white flex items-center tracking-tighter uppercase italic select-none shrink-0 w-full lg:w-auto justify-center lg:justify-start">
             <svg className="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -305,7 +311,7 @@ const HardwareTab = ({ isSuperAdmin }) => {
         </div>
 
         <div className="bg-smart-bg/30 dark:bg-gray-900/30 px-8 py-4 border-b border-smart-light/10 flex justify-between items-center">
-          <span className="text-xs font-bold text-smart-gray dark:text-gray-400 uppercase tracking-widest">{filteredAlerts.length} Alerts</span>
+          <span className="text-xs font-bold text-smart-gray dark:text-gray-400 uppercase tracking-widest">{totalAlertsCount} Alerts</span>
           <select value={alertFilterType} onChange={(e) => { setAlertFilterType(e.target.value); fetchDashboardAlerts(e.target.value); }} className="px-4 py-2 rounded-xl border-2 border-smart-light/20 bg-white dark:bg-gray-800 text-smart-dark dark:text-white focus:ring-2 focus:ring-smart-light/50 outline-none transition font-mono text-[10px] font-black tracking-widest cursor-pointer">
             <option value="all">ALL ALERTS</option>
             <option value="warning">WARNINGS</option>
@@ -328,11 +334,11 @@ const HardwareTab = ({ isSuperAdmin }) => {
           </table>
         </div>
 
-        <div className="flex-grow overflow-y-auto overflow-x-hidden h-[450px] custom-scrollbar-alerts pr-2">
+        <div className="flex-grow overflow-x-hidden pr-2">
           <table className="w-full text-left table-fixed border-collapse">
             <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
               {Array.isArray(filteredAlerts) && filteredAlerts.map((alert) => (
-                <tr key={alert._id || alert.id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors">
+                <tr key={alert._id || alert.id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors animate-fade-in">
                   <td className="px-4 py-3 pl-6 align-top text-left w-1/4">
                     <div className="text-sm font-bold text-smart-dark dark:text-gray-300">{alert.timeString || alert.time}</div>
                     <div className="text-xs font-bold text-smart-gray dark:text-gray-500 uppercase mt-0.5">{new Date(alert.createdAt).toLocaleDateString()}</div>
@@ -363,15 +369,13 @@ const HardwareTab = ({ isSuperAdmin }) => {
         </div>
 
         <div className="mt-auto flex flex-col w-full">
-          {(totalAlertPages > 1 || filteredAlerts.length === 0) && !isLoadingAlerts && (
-            <div className="bg-smart-bg/30 dark:bg-gray-900/30 px-6 sm:px-8 py-4 border-t border-smart-light/10 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <span className="text-[10px] font-bold text-smart-gray dark:text-gray-400 uppercase tracking-widest text-center sm:text-left w-full sm:w-auto shrink-0">
-                Showing {filteredAlerts.length === 0 ? 0 : (alertPage - 1) * 10 + 1} to {Math.min(alertPage * 10, totalAlertsCount)} of {totalAlertsCount}
-              </span>
-              <div className="flex space-x-2 items-center justify-center sm:justify-end w-full sm:w-auto shrink-0">
-                <button onClick={() => fetchAlertsPage(Math.max(1, alertPage - 1))} disabled={alertPage <= 1} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10 shadow-sm">Prev</button>
-                <span className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-smart-dark dark:text-white flex items-center shrink-0">Page {filteredAlerts.length === 0 ? 0 : alertPage} of {filteredAlerts.length === 0 ? 0 : totalAlertPages}</span>
-                <button onClick={() => fetchAlertsPage(Math.min(totalAlertPages, alertPage + 1))} disabled={alertPage >= totalAlertPages || filteredAlerts.length === 0} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10 shadow-sm">Next</button>
+          {totalAlertPages > 1 && !isLoadingAlerts && (
+            <div className="bg-smart-bg/30 dark:bg-gray-900/30 px-8 py-4 border-t border-smart-light/10 flex justify-between items-center">
+              <span className="text-[10px] font-bold text-smart-gray dark:text-gray-400 uppercase tracking-widest hidden sm:inline">Showing {(alertPage - 1) * 10 + 1} to {Math.min(alertPage * 10, totalAlertsCount)} of {totalAlertsCount}</span>
+              <div className="flex space-x-2 ml-auto sm:ml-0">
+                <button onClick={() => fetchAlertsPage(Math.max(1, alertPage - 1))} disabled={alertPage === 1} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Prev</button>
+                <span className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-smart-dark dark:text-white flex items-center">Page {alertPage} of {totalAlertPages}</span>
+                <button onClick={() => fetchAlertsPage(Math.min(totalAlertPages, alertPage + 1))} disabled={alertPage >= totalAlertPages} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Next</button>
               </div>
             </div>
           )}
