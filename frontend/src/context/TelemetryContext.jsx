@@ -14,6 +14,9 @@ const systemMapping = {
 export const TelemetryProvider = ({ children }) => {
   const [alerts, setAlerts] = useState([]);
   const [totalAlertsCount, setTotalAlertsCount] = useState(0);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
+  const [unreadAuditCount, setUnreadAuditCount] = useState(0);
+  const [unreadBannedCount, setUnreadBannedCount] = useState(0);
   const [telemetryMatrix, setTelemetryMatrix] = useState([
     { id: 1, system: 'Ambient Lighting', error: 0, warning: 0, success: 0, info: 0, action: 0 },
     { id: 2, system: 'Automated Gate', error: 0, warning: 0, success: 0, info: 0, action: 0 },
@@ -153,6 +156,12 @@ export const TelemetryProvider = ({ children }) => {
       setAlerts, 
       totalAlertsCount, 
       setTotalAlertsCount,
+      unreadAlertsCount,
+      setUnreadAlertsCount,
+      unreadAuditCount,
+      setUnreadAuditCount,
+      unreadBannedCount,
+      setUnreadBannedCount,
       telemetryMatrix, 
       setTelemetryMatrix,
       fetchMatrixData

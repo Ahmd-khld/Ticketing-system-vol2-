@@ -410,7 +410,7 @@ const AdminGRC = () => {
                         className="w-full bg-white/[0.05] border border-white/20 hover:border-emerald-500/50 text-white text-xs font-black uppercase tracking-widest rounded-xl px-4 py-4 outline-none transition-all cursor-pointer appearance-none shadow-2xl"
                       >
                         {frameworks.map(f => (
-                          <option key={f.id} value={f.id} className="bg-[#0B0F15]">{f.name}</option>
+                          <option key={f.id} value={f.id} className="bg-[#0F1218] text-white">{f.name}</option>
                         ))}
                       </select>
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-400 group-hover/select:scale-110 transition-all">
@@ -711,7 +711,7 @@ const AdminGRC = () => {
                       onChange={(e) => setCategoryFilter(e.target.value)}
                       className="w-full bg-white/[0.03] border border-white/5 group-hover/filter:border-white/10 text-slate-200 text-[10px] font-black uppercase tracking-widest rounded-xl px-4 py-3.5 outline-none transition-all cursor-pointer appearance-none"
                     >
-                      {categories.map(c => <option key={c} value={c} className="bg-[#0B0F15]">{c}</option>)}
+                      {categories.map(c => <option key={c} value={c} className="bg-[#0F1218] text-white">{c}</option>)}
                     </select>
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-600">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
@@ -730,10 +730,10 @@ const AdminGRC = () => {
                       onChange={(e) => setScoreFilter(e.target.value)}
                       className="w-full bg-white/[0.03] border border-white/5 group-hover/filter:border-white/10 text-slate-200 text-[10px] font-black uppercase tracking-widest rounded-xl px-4 py-3.5 outline-none transition-all cursor-pointer appearance-none"
                     >
-                      <option value="All">All Severities</option>
-                      <option value="High">High Criticality</option>
-                      <option value="Medium">Medium Priority</option>
-                      <option value="Low">Low Observation</option>
+                      <option value="All" className="bg-[#0F1218] text-white">All Severities</option>
+                      <option value="High" className="bg-[#0F1218] text-white">High Criticality</option>
+                      <option value="Medium" className="bg-[#0F1218] text-white">Medium Priority</option>
+                      <option value="Low" className="bg-[#0F1218] text-white">Low Observation</option>
                     </select>
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-600">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
@@ -752,10 +752,10 @@ const AdminGRC = () => {
                       onChange={(e) => setTimeFilter(e.target.value)}
                       className="w-full bg-white/[0.03] border border-white/5 group-hover/filter:border-white/10 text-slate-200 text-[10px] font-black uppercase tracking-widest rounded-xl px-4 py-3.5 outline-none transition-all cursor-pointer appearance-none"
                     >
-                      <option value="All">All Time</option>
-                      <option value="Last 24 Hours">Last 24 Hours</option>
-                      <option value="Last 7 Days">Last 7 Days</option>
-                      <option value="Last 30 Days">Last 30 Days</option>
+                      <option value="All" className="bg-[#0F1218] text-white">All Time</option>
+                      <option value="Last 24 Hours" className="bg-[#0F1218] text-white">Last 24 Hours</option>
+                      <option value="Last 7 Days" className="bg-[#0F1218] text-white">Last 7 Days</option>
+                      <option value="Last 30 Days" className="bg-[#0F1218] text-white">Last 30 Days</option>
                     </select>
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-600">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
