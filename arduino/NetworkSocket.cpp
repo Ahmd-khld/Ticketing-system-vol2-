@@ -2,16 +2,33 @@
 
 bool NetworkSocket::sendAT(const String& cmd, const char* expected, unsigned long timeout) {
     flushSerial();
+    Serial.print(F("[Network] Sending AT: "));
+    Serial.println(cmd);
     _wifi.getSerial().println(cmd);
     return waitForResponse(expected, timeout);
 }
 
 bool NetworkSocket::waitForResponse(const char* expected, unsigned long timeout) {
     unsigned long start = millis();
+    String response = "";
     while (millis() - start < timeout) {
-        if (_wifi.getSerial().find((char*)expected)) {
-            return true;
+        if (_wifi.getSerial().available()) {
+            char c = _wifi.getSerial().read();
+            response += c;
+            if (response.endsWith(expected)) {
+                return true;
+            }
         }
+    }
+    if (response.length() > 0) {
+        Serial.print(F("[Network] ERROR: Timeout waiting for '"));
+        Serial.print(expected);
+        Serial.println(F("'. Received:"));
+        Serial.println(response);
+    } else {
+        Serial.print(F("[Network] ERROR: No response for '"));
+        Serial.print(expected);
+        Serial.println(F("'"));
     }
     return false;
 }

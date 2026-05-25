@@ -16,7 +16,7 @@
  */
 
 // Debug flag: true uses HTTP (port 5000), false uses HTTPS (port 443)
-bool DEBUG_MODE = false;
+bool DEBUG_MODE = true;
 
 // Hardware Serial communication for the ESP8266 module
 SoftwareSerial espSerial(A4, A5); // RX (to ESP TX), TX (to ESP RX)
