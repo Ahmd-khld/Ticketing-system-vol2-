@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="treeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#b2ff4a;stop-opacity:1" /> <!-- Smart Glow -->
+      <stop offset="100%" style="stop-color:#80c241;stop-opacity:1" /> <!-- Smart Light -->
+    </linearGradient>
+  </defs>
+  <!-- Tree Trunk -->
+  <path d="M45 90 L55 90 L52 60 L48 60 Z" fill="#5D4037" />
+  
+  <!-- Tree Canopy (Organic Rounded Layers) -->
+  <!-- Bottom layer -->
+  <circle cx="50" cy="65" r="25" fill="url(#treeGradient)" />
+  <circle cx="35" cy="60" r="20" fill="url(#treeGradient)" />
+  <circle cx="65" cy="60" r="20" fill="url(#treeGradient)" />
+  
+  <!-- Middle layer -->
+  <circle cx="50" cy="45" r="22" fill="url(#treeGradient)" />
+  <circle cx="40" cy="45" r="18" fill="url(#treeGradient)" />
+  <circle cx="60" cy="45" r="18" fill="url(#treeGradient)" />
+  
+  <!-- Top layer -->
+  <circle cx="50" cy="25" r="18" fill="url(#treeGradient)" />
+</svg>

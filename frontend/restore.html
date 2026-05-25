@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restore Smart Garden State</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f4f8;
+      display: flex;
+      justify-content: center;
+      padding-top: 50px;
+      color: #333;
+    }
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 1.4rem;
+      color: #2c3e50;
+    }
+    input[type="file"] {
+      display: block;
+      margin: 15px auto;
+      font-size: 0.9rem;
+    }
+    select {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background-color 0.3s, transform 0.1s;
+      width: 100%;
+      font-weight: bold;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    button:hover:not(:disabled) {
+      background-color: #45a049;
+    }
+    button:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+    button:disabled {
+      background-color: #a5d6a7;
+      cursor: not-allowed;
+    }
+    .btn-danger {
+      background-color: #f44336;
+    }
+    .btn-danger:hover:not(:disabled) {
+      background-color: #d32f2f;
+    }
+    .btn-danger:disabled {
+      background-color: #ef9a9a;
+    }
+    .spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-left-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    button.loading .spinner {
+      display: block;
+    }
+    #status {
+      margin-top: 15px;
+      font-weight: bold;
+      min-height: 20px;
+    }
+    .success { color: #2e7d32; }
+    .error { color: #d32f2f; }
+    hr {
+      border: 0;
+      height: 1px;
+      background: #e0e0e0;
+      margin: 25px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Restore Smart Garden State</h2>
+    <input type="file" id="stateFile" accept=".json" />
+    <button id="restoreBtn">
+      <span class="spinner"></span>
+      <span class="btn-text">Restore</span>
+    </button>
+    
+    <hr />
+    <h2>Backup Current State</h2>
+    <button id="downloadBtn">
+      <span class="spinner"></span>
+      <span class="btn-text">Download State</span>
+    </button>
+
+    <hr />
+    <h2>Server Backups</h2>
+    <button id="createServerBackupBtn" style="margin-bottom: 15px;">
+      <span class="spinner"></span>
+      <span class="btn-text">Create Server Backup</span>
+    </button>
+    
+    <select id="backupSelect"></select>
+    <div style="display: flex; gap: 10px;">
+      <button id="restoreServerBackupBtn">
+        <span class="spinner"></span>
+        <span class="btn-text">Restore</span>
+      </button>
+      <button id="deleteServerBackupBtn" class="btn-danger">
+        <span class="spinner"></span>
+        <span class="btn-text">Delete</span>
+      </button>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    document.getElementById('restoreBtn').addEventListener('click', async () => {
+      const fileInput = document.getElementById('stateFile');
+      const file = fileInput.files[0];
+      const statusDiv = document.getElementById('status');
+      const restoreBtn = document.getElementById('restoreBtn');
+
+      if (!file) {
+        statusDiv.textContent = 'Please select a JSON file first.';
+        statusDiv.className = 'error';
+        return;
+      }
+
+      // Interactive UI states for Restoring
+      restoreBtn.disabled = true;
+      restoreBtn.classList.add('loading');
+      restoreBtn.querySelector('.btn-text').textContent = 'Restoring...';
+      statusDiv.textContent = '';
+      statusDiv.className = '';
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const stateData = JSON.parse(e.target.result);
+          
+          // Send the parsed JSON data to the backend
+          const response = await fetch('http://localhost:3000/api/state/restore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(stateData)
+          });
+
+          if (response.ok) {
+            statusDiv.textContent = 'State successfully restored!';
+            statusDiv.className = 'success';
+          } else {
+            statusDiv.textContent = 'Failed to restore state on the server.';
+            statusDiv.className = 'error';
+          }
+        } catch (error) {
+          console.error(error);
+          statusDiv.textContent = 'Invalid JSON file format.';
+          statusDiv.className = 'error';
+        } finally {
+          restoreBtn.disabled = false;
+          restoreBtn.classList.remove('loading');
+          restoreBtn.querySelector('.btn-text').textContent = 'Restore';
+          fileInput.value = ''; // Clear file input
+        }
+      };
+      
+      reader.onerror = () => {
+        statusDiv.textContent = 'Error reading the file.';
+        statusDiv.className = 'error';
+        restoreBtn.disabled = false;
+        restoreBtn.classList.remove('loading');
+        restoreBtn.querySelector('.btn-text').textContent = 'Restore';
+      };
+
+      // Read the file content as text
+      reader.readAsText(file);
+    });
+
+    // Feature to download the current state as a JSON file
+    document.getElementById('downloadBtn').addEventListener('click', async () => {
+      const statusDiv = document.getElementById('status');
+      const downloadBtn = document.getElementById('downloadBtn');
+
+      // Interactive UI states for Downloading
+      downloadBtn.disabled = true;
+      downloadBtn.classList.add('loading');
+      downloadBtn.querySelector('.btn-text').textContent = 'Downloading...';
+      statusDiv.textContent = '';
+      statusDiv.className = '';
+
+      try {
+        const response = await fetch('http://localhost:3000/api/state/download');
+        if (!response.ok) throw new Error('Network response was not ok');
+        
+        const stateData = await response.json();
+        
+        // Create a blob from the JSON response and trigger a download
+        const blob = new Blob([JSON.stringify(stateData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `smart_garden_state_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        statusDiv.textContent = 'Backup downloaded successfully!';
+        statusDiv.className = 'success';
+      } catch (error) {
+        console.error('Error downloading state:', error);
+        statusDiv.textContent = 'Failed to download state from the server.';
+        statusDiv.className = 'error';
+      } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.classList.remove('loading');
+        downloadBtn.querySelector('.btn-text').textContent = 'Download State';
+      }
+    });
+
+    // Function to load existing server backups into the dropdown
+    async function loadServerBackups() {
+      const select = document.getElementById('backupSelect');
+      const restoreBtn = document.getElementById('restoreServerBackupBtn');
+      const deleteBtn = document.getElementById('deleteServerBackupBtn');
+      try {
+        const response = await fetch('http://localhost:3000/api/state/backups');
+        const backups = await response.json();
+        
+        select.innerHTML = '';
+        if (backups.length === 0) {
+          select.innerHTML = '<option value="">No backups available</option>';
+          restoreBtn.disabled = true;
+          deleteBtn.disabled = true;
+        } else {
+          backups.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b.id;
+            opt.textContent = new Date(b.date).toLocaleString();
+            select.appendChild(opt);
+          });
+          restoreBtn.disabled = false;
+          deleteBtn.disabled = false;
+        }
+      } catch (error) {
+        console.error('Error loading backups:', error);
+        select.innerHTML = '<option value="">Error loading backups</option>';
+        restoreBtn.disabled = true;
+        deleteBtn.disabled = true;
+      }
+    }
+
+    // Create a new backup on the server
+    document.getElementById('createServerBackupBtn').addEventListener('click', async () => {
+      const statusDiv = document.getElementById('status');
+      const createBtn = document.getElementById('createServerBackupBtn');
+
+      createBtn.disabled = true;
+      createBtn.classList.add('loading');
+      createBtn.querySelector('.btn-text').textContent = 'Creating...';
+      statusDiv.textContent = '';
+      statusDiv.className = '';
+
+      try {
+        const response = await fetch('http://localhost:3000/api/state/backup', { method: 'POST' });
+        if (!response.ok) throw new Error('Failed to create backup');
+        
+        statusDiv.textContent = 'Server backup created successfully!';
+        statusDiv.className = 'success';
+        await loadServerBackups(); // Refresh the dropdown list
+      } catch (error) {
+        console.error('Error:', error);
+        statusDiv.textContent = 'Failed to create server backup.';
+        statusDiv.className = 'error';
+      } finally {
+        createBtn.disabled = false;
+        createBtn.classList.remove('loading');
+        createBtn.querySelector('.btn-text').textContent = 'Create Server Backup';
+      }
+    });
+
+    // Restore a selected backup from the server
+    document.getElementById('restoreServerBackupBtn').addEventListener('click', async () => {
+      const statusDiv = document.getElementById('status');
+      const restoreBtn = document.getElementById('restoreServerBackupBtn');
+      const select = document.getElementById('backupSelect');
+      const backupId = select.value;
+
+      if (!backupId) return;
+
+      restoreBtn.disabled = true;
+      restoreBtn.classList.add('loading');
+      restoreBtn.querySelector('.btn-text').textContent = 'Restoring...';
+      statusDiv.textContent = '';
+      statusDiv.className = '';
+
+      try {
+        const response = await fetch(`http://localhost:3000/api/state/restore/${backupId}`, { method: 'POST' });
+        if (!response.ok) throw new Error('Failed to restore backup');
+        
+        statusDiv.textContent = 'Server backup restored successfully!';
+        statusDiv.className = 'success';
+      } catch (error) {
+        console.error('Error:', error);
+        statusDiv.textContent = 'Failed to restore server backup.';
+        statusDiv.className = 'error';
+      } finally {
+        restoreBtn.disabled = false;
+        restoreBtn.classList.remove('loading');
+        restoreBtn.querySelector('.btn-text').textContent = 'Restore';
+      }
+    });
+
+    // Delete a selected backup from the server
+    document.getElementById('deleteServerBackupBtn').addEventListener('click', async () => {
+      const statusDiv = document.getElementById('status');
+      const deleteBtn = document.getElementById('deleteServerBackupBtn');
+      const select = document.getElementById('backupSelect');
+      const backupId = select.value;
+
+      if (!backupId) return;
+      
+      if (!confirm('Are you sure you want to permanently delete this backup?')) {
+        return;
+      }
+
+      deleteBtn.disabled = true;
+      deleteBtn.classList.add('loading');
+      deleteBtn.querySelector('.btn-text').textContent = 'Deleting...';
+      statusDiv.textContent = '';
+      statusDiv.className = '';
+
+      try {
+        const response = await fetch(`http://localhost:3000/api/state/backup/${backupId}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete backup');
+        
+        statusDiv.textContent = 'Server backup deleted successfully!';
+        statusDiv.className = 'success';
+        await loadServerBackups(); // Refresh the dropdown list automatically
+      } catch (error) {
+        console.error('Error:', error);
+        statusDiv.textContent = 'Failed to delete server backup.';
+        statusDiv.className = 'error';
+      } finally {
+        deleteBtn.disabled = false;
+        deleteBtn.classList.remove('loading');
+        deleteBtn.querySelector('.btn-text').textContent = 'Delete';
+      }
+    });
+
+    // Initial load of the dropdown menu
+    loadServerBackups();
+  </script>
+</body>
+</html>
