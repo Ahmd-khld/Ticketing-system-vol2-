@@ -1,5 +1,7 @@
 #include <SoftwareSerial.h>
-#include "SmartParkHTTP.h"
+#include "WiFiModule.h"
+#include "SecureSocket.h"
+#include "InsecureSocket.h"
 #include "PeripheralInterface.h"
 #include "RuntimeDispatcher.h"
 
@@ -9,35 +11,54 @@
  * This firmware uses a tiered architecture:
  * 1. PeripheralInterface: Manages hardware I/O and local automation.
  * 2. RuntimeDispatcher: Coordinates networking and remote command routing.
- * 3. SmartParkHTTP: Abstracted AT command set for ESP8266 communication.
+ * 3. WiFiModule: Manages WiFi connection state.
+ * 4. NetworkSocket: Abstracted communication (Secure/Insecure).
  */
+
+// Debug flag: true uses HTTP (port 5000), false uses HTTPS (port 443)
+bool DEBUG_MODE = false;
 
 // Hardware Serial communication for the ESP8266 module
 SoftwareSerial espSerial(A4, A5); // RX (to ESP TX), TX (to ESP RX)
 
 // Shared instances
-SmartParkHTTP network(espSerial);
+WiFiModule wifi(espSerial);
 PeripheralInterface peripherals;
-RuntimeDispatcher systemRuntime(network, peripherals);
+
+// Polymorphic socket choice
+#ifdef USE_INSECURE
+InsecureSocket socket_impl(wifi);
+#else
+SecureSocket socket_impl(wifi);
+#endif
+
+// We use pointers/references to handle the conditional socket implementation
+NetworkSocket* activeSocket;
+RuntimeDispatcher* systemRuntime;
 
 /**
  * Standard Arduino setup entry point.
  */
 void setup() {
-  // Initialize debugging serial
   Serial.begin(9600);
-  
-  // Initialize ESP8266 serial link
   espSerial.begin(9600);
+
+  // Initialize socket implementation based on mode
+  if (DEBUG_MODE) {
+    activeSocket = new InsecureSocket(wifi);
+  } else {
+    activeSocket = new SecureSocket(wifi);
+  }
+
+  systemRuntime = new RuntimeDispatcher(wifi, *activeSocket, peripherals, DEBUG_MODE);
   
   // Hand over control to the runtime orchestrator
-  systemRuntime.setup();
+  systemRuntime->setup();
 }
 
 /**
  * Standard Arduino loop entry point.
  */
 void loop() {
-  // Continuous execution managed by the dispatcher
-  systemRuntime.loop();
+  systemRuntime->loop();
 }
