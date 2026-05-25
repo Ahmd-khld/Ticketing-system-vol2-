@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../api';
 import { useUI } from '../../../context/UIContext';
 import { useTelemetry } from '../../../context/TelemetryContext';
@@ -20,7 +21,6 @@ const HardwareTab = ({ isSuperAdmin }) => {
   const [alertPage, setAlertPage] = useState(1);
   const [totalAlertPages, setTotalAlertPages] = useState(1);
   const [isLoadingAlerts, setIsLoadingAlerts] = useState(false);
-  const [isHardwareAlertsExpanded, setIsHardwareAlertsExpanded] = useState(true);
 
   const [manualTicketId, setManualTicketId] = useState('');
   const [scanMessage, setScanMessage] = useState(null);
@@ -122,30 +122,6 @@ const HardwareTab = ({ isSuperAdmin }) => {
     } catch (err) { console.error('Audio success failed', err); }
   };
 
-  const playErrorSound = () => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const audioCtx = new AudioContext();
-      const playBuzz = (start) => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(110, start);
-        gain.gain.setValueAtTime(0, start);
-        gain.gain.linearRampToValueAtTime(0.1, start + 0.01);
-        gain.gain.linearRampToValueAtTime(0, start + 0.2);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(start);
-        osc.stop(start + 0.2);
-      };
-      playBuzz(audioCtx.currentTime);
-      playBuzz(audioCtx.currentTime + 0.25);
-      setTimeout(() => audioCtx.close(), 1000);
-    } catch (err) { console.error('Audio error failed', err); }
-  };
-
   const onScanSuccess = (decodedText) => {
     if (scanLock.current || !decodedText) return;
     scanLock.current = true;
@@ -153,8 +129,6 @@ const HardwareTab = ({ isSuperAdmin }) => {
     playSuccessSound();
     handleScanRequest(decodedText);
   };
-
-  const onScanFailure = (error) => {};
 
   const handleScanRequest = async (idToScan) => {
     const token = localStorage.getItem('token');
@@ -182,7 +156,7 @@ const HardwareTab = ({ isSuperAdmin }) => {
           { facingMode: 'environment' },
           { fps: 10, qrbox: { width: 250, height: 250 } },
           onScanSuccess,
-          onScanFailure
+          () => {}
         );
         setIsCameraActive(true);
       } catch (err) {
@@ -227,9 +201,13 @@ const HardwareTab = ({ isSuperAdmin }) => {
   };
 
   return (
-    <div className="flex flex-col xl:flex-row gap-8 mb-10 animate-fade-in-up items-stretch">
+    <div className="flex flex-col xl:flex-row gap-8 mb-10 items-stretch">
       {/* Gate QR Scanner */}
-      <div className="bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 overflow-hidden flex flex-col w-full xl:w-1/3">
+      <motion.div 
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 overflow-hidden flex flex-col w-full xl:w-1/3"
+      >
         <div className="bg-smart-bg dark:bg-gray-900 px-6 sm:px-8 py-6 border-b border-smart-light/10 flex flex-col items-center justify-center gap-4">
           <h2 className="text-xl font-black text-smart-dark dark:text-white flex items-center tracking-tighter uppercase italic shrink-0">
             <svg className="w-6 h-6 mr-3 text-smart-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,10 +216,15 @@ const HardwareTab = ({ isSuperAdmin }) => {
             Gate QR Scanner
           </h2>
           <div className="flex flex-row flex-wrap justify-center items-center gap-3">
-            <button onClick={handleToggleSensor} className="px-3 py-1.5 bg-smart-bg dark:bg-gray-800 hover:bg-smart-light/20 text-smart-dark dark:text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm flex justify-center items-center border border-smart-light/10">
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleToggleSensor} 
+              className="px-3 py-1.5 bg-smart-bg dark:bg-gray-800 hover:bg-smart-light/20 text-smart-dark dark:text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm flex justify-center items-center border border-smart-light/10"
+            >
               <svg className="w-3 h-3 mr-1.5 text-smart-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
               {isCameraActive ? 'Halt Link' : 'Start Link'}
-            </button>
+            </motion.button>
             <div className="flex justify-center items-center space-x-2 bg-smart-light/10 dark:bg-smart-light/20 px-3 py-1.5 rounded-full border border-smart-light/20">
               <div className="w-2 h-2 bg-smart-light rounded-full animate-ping"></div>
               <span className="text-[10px] text-smart-dark dark:text-smart-glow font-black uppercase tracking-widest">Online</span>
@@ -250,26 +233,50 @@ const HardwareTab = ({ isSuperAdmin }) => {
         </div>
 
         <div className="flex-grow flex flex-col bg-smart-dark/5 dark:bg-black p-6 sm:p-10 justify-center items-center relative min-h-[300px]">
-          {scanMessage && (
-            <div className={`mb-8 p-6 rounded-2xl font-black text-center text-sm shadow-xl border-2 w-full mx-auto transform animate-fade-in ${scanMessage.type === 'success' ? 'bg-smart-light/20 border-smart-light text-smart-dark dark:text-smart-glow' : 'bg-red-50 border-red-500 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-              {scanMessage.text}
-            </div>
-          )}
+          <AnimatePresence>
+            {scanMessage && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className={`mb-8 p-6 rounded-2xl font-black text-center text-sm shadow-xl border-2 w-full mx-auto ${scanMessage.type === 'success' ? 'bg-smart-light/20 border-smart-light text-smart-dark dark:text-smart-glow' : 'bg-red-50 border-red-500 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}
+              >
+                {scanMessage.text}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div id="reader" className="w-full bg-white dark:bg-gray-800 rounded-[30px] shadow-2xl border-4 border-smart-dark dark:border-smart-light/50 ring-8 ring-smart-bg dark:ring-gray-900 overflow-hidden"></div>
           
-          {isLockedUI && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-[30px]">
-              <button onClick={handleNextScan} className="bg-blue-500 hover:bg-blue-600 text-white font-black py-4 px-10 rounded-2xl shadow-2xl transform transition hover:scale-105 active:scale-95 uppercase tracking-widest text-sm">Next Scan</button>
-            </div>
-          )}
+          <AnimatePresence>
+            {isLockedUI && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-[30px]"
+              >
+                <motion.button 
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleNextScan} 
+                  className="bg-blue-500 hover:bg-blue-600 text-white font-black py-4 px-10 rounded-2xl shadow-2xl uppercase tracking-widest text-sm"
+                >
+                  Next Scan
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
           
           {!isCameraActive && !scanMessage && (
-            <label className="mt-8 text-sm text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center gap-2">
+            <motion.label 
+              whileHover={{ scale: 1.05 }}
+              className="mt-8 text-sm text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center gap-2"
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
               <span>Upload QR Image</span>
               <input type="file" className="hidden" accept="image/*" onChange={handleFileScan} />
-            </label>
+            </motion.label>
           )}
         </div>
 
@@ -278,18 +285,37 @@ const HardwareTab = ({ isSuperAdmin }) => {
             <div className="relative">
               <input type="text" value={manualTicketId} onChange={(e) => setManualTicketId(e.target.value)} placeholder="ENTER TICKET IDENTIFIER..." className="w-full px-6 py-5 rounded-2xl border-2 border-smart-light/20 bg-white dark:bg-gray-800 text-smart-dark dark:text-white focus:ring-4 focus:ring-smart-light/20 focus:border-smart-light outline-none transition font-mono text-xs font-black tracking-widest" />
             </div>
-            <button type="submit" className="w-full py-5 bg-smart-light hover:bg-smart-dark text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl hover:shadow-smart-light/20 active:scale-95">Manual Entry Override</button>
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit" 
+              className="w-full py-5 bg-smart-light hover:bg-smart-dark text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl"
+            >
+              Manual Entry Override
+            </motion.button>
           </form>
         </div>
-      </div>
+      </motion.div>
 
       {/* Hardware Alerts Table */}
-      <div id="hardware-alerts-panel" className="bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 flex flex-col overflow-hidden transition-all duration-300 w-full xl:w-2/3 relative min-h-[500px]">
-        {isLoadingAlerts && (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-30 flex justify-center items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-smart-light"></div>
-          </div>
-        )}
+      <motion.div 
+        initial={{ opacity: 0, x: 10 }}
+        animate={{ opacity: 1, x: 0 }}
+        id="hardware-alerts-panel" 
+        className="bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 flex flex-col overflow-hidden transition-all duration-300 w-full xl:w-2/3 relative min-h-[500px]"
+      >
+        <AnimatePresence>
+          {isLoadingAlerts && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-30 flex justify-center items-center"
+            >
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-smart-light"></div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         <div className="bg-smart-bg dark:bg-gray-900 px-6 sm:px-8 py-6 border-b border-smart-light/10 flex flex-col lg:flex-row justify-between items-center gap-4">
           <h2 className="text-xl font-black text-smart-dark dark:text-white flex items-center tracking-tighter uppercase italic select-none shrink-0 w-full lg:w-auto justify-center lg:justify-start">
@@ -298,10 +324,16 @@ const HardwareTab = ({ isSuperAdmin }) => {
           </h2>
           <div className="flex flex-row flex-wrap items-center justify-center lg:justify-end gap-3 w-full lg:w-auto text-smart-gray dark:text-gray-400">
             {isSuperAdmin && (
-              <button onClick={(e) => { e.stopPropagation(); handleClearHardwareAlerts(); }} className="hidden sm:flex items-center mr-4 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-red-500/20" disabled={masterAlertList.length === 0}>
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={(e) => { e.stopPropagation(); handleClearHardwareAlerts(); }} 
+                className="hidden sm:flex items-center mr-4 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-red-500/20" 
+                disabled={masterAlertList.length === 0}
+              >
                 <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 Clear All
-              </button>
+              </motion.button>
             )}
             <div className="flex items-center space-x-2 bg-smart-bg dark:bg-gray-800 px-4 py-1.5 rounded-full border border-smart-light/10 mr-4">
               <div className="w-2 h-2 bg-smart-light rounded-full animate-pulse"></div>
@@ -338,9 +370,12 @@ const HardwareTab = ({ isSuperAdmin }) => {
           <table className="w-full text-left table-fixed border-collapse">
             <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
               {Array.isArray(filteredAlerts) && filteredAlerts.map((alert) => (
-                <tr key={alert._id || alert.id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors animate-fade-in">
+                <tr 
+                  key={alert._id || alert.id} 
+                  className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors"
+                >
                   <td className="px-4 py-3 pl-6 align-top text-left w-1/4">
-                    <div className="text-sm font-bold text-smart-dark dark:text-gray-300">{alert.timeString || alert.time}</div>
+                    <div className="text-sm font-bold text-smart-dark dark:text-gray-300 italic">{alert.timeString || alert.time}</div>
                     <div className="text-xs font-bold text-smart-gray dark:text-gray-500 uppercase mt-0.5">{new Date(alert.createdAt).toLocaleDateString()}</div>
                   </td>
                   <td className="px-4 py-3 align-top text-center w-[120px]">
@@ -354,7 +389,7 @@ const HardwareTab = ({ isSuperAdmin }) => {
                       {alert.type}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-smart-dark dark:text-gray-200 font-medium text-sm leading-relaxed break-words align-top text-left">
+                  <td className="px-4 py-3 text-smart-dark dark:text-gray-200 font-medium text-sm leading-relaxed break-words align-top text-left italic">
                     {alert.message}
                   </td>
                 </tr>
@@ -373,18 +408,41 @@ const HardwareTab = ({ isSuperAdmin }) => {
             <div className="bg-smart-bg/30 dark:bg-gray-900/30 px-8 py-4 border-t border-smart-light/10 flex justify-between items-center">
               <span className="text-[10px] font-bold text-smart-gray dark:text-gray-400 uppercase tracking-widest hidden sm:inline">Showing {(alertPage - 1) * 10 + 1} to {Math.min(alertPage * 10, totalAlertsCount)} of {totalAlertsCount}</span>
               <div className="flex space-x-2 ml-auto sm:ml-0">
-                <button onClick={() => fetchAlertsPage(Math.max(1, alertPage - 1))} disabled={alertPage === 1} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Prev</button>
-                <span className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-smart-dark dark:text-white flex items-center">Page {alertPage} of {totalAlertPages}</span>
-                <button onClick={() => fetchAlertsPage(Math.min(totalAlertPages, alertPage + 1))} disabled={alertPage >= totalAlertPages} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Next</button>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }} 
+                  whileTap={{ scale: 0.95 }} 
+                  onClick={() => fetchAlertsPage(Math.max(1, alertPage - 1))} 
+                  disabled={alertPage === 1} 
+                  className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10"
+                >
+                  Prev
+                </motion.button>
+                <span className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-smart-dark dark:text-white flex items-center italic">Page {alertPage} of {totalAlertPages}</span>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }} 
+                  whileTap={{ scale: 0.95 }} 
+                  onClick={() => fetchAlertsPage(Math.min(totalAlertPages, alertPage + 1))} 
+                  disabled={alertPage >= totalAlertPages} 
+                  className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10"
+                >
+                  Next
+                </motion.button>
               </div>
             </div>
           )}
 
           <div className="bg-smart-bg dark:bg-gray-900 p-6 border-t border-smart-light/10 flex justify-center items-center">
-            <button onClick={() => navigate('/admin/telemetry')} className="bg-green-600 hover:bg-green-700 text-white font-black text-[11px] py-3 px-8 rounded-xl transition-all uppercase tracking-widest shadow-lg shadow-green-900/20">View Live Telemetry</button>
+            <motion.button 
+              whileHover={{ scale: 1.05, backgroundColor: '#047857' }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/admin/telemetry')} 
+              className="bg-green-600 text-white font-black text-[11px] py-3 px-8 rounded-xl transition-all uppercase tracking-widest shadow-lg shadow-green-900/20"
+            >
+              View Live Telemetry
+            </motion.button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

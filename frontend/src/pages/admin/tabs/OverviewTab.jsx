@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Smile, Meh, Frown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../api';
 import { useUI } from '../../../context/UIContext';
 
@@ -13,12 +14,6 @@ const OverviewTab = ({ isSuperAdmin }) => {
   const [insights, setInsights] = useState(null);
   const [loadingInsights, setLoadingInsights] = useState(true);
   const [insightStartDate, setInsightStartDate] = useState(new Date());
-
-  // Historical Sales State
-  const [monthlySales, setMonthlySales] = useState([]);
-  const [salesStartDate, setSalesStartDate] = useState('');
-  const [salesEndDate, setSalesEndDate] = useState('');
-  const [isMonthlySalesExpanded, setIsMonthlySalesExpanded] = useState(true);
 
   const fetchInsights = async () => {
     setLoadingInsights(true);
@@ -44,12 +39,6 @@ const OverviewTab = ({ isSuperAdmin }) => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setStats(statsRes.data);
-
-      const salesRes = await api.get('/admin/monthly-sales', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMonthlySales(salesRes.data);
-      
       await fetchInsights();
     } catch (error) {
       console.error('Failed to refresh stats', error);
@@ -65,44 +54,6 @@ const OverviewTab = ({ isSuperAdmin }) => {
   useEffect(() => {
     fetchInsights();
   }, [insightStartDate]);
-
-  useEffect(() => {
-    const fetchFilteredSales = async () => {
-      if (!salesStartDate && !salesEndDate) return;
-      const token = localStorage.getItem('token');
-      try {
-        const res = await api.get('/admin/monthly-sales', {
-          params: { startDate: salesStartDate, endDate: salesEndDate },
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setMonthlySales(res.data);
-      } catch (err) {
-        console.error('Failed to fetch filtered sales', err);
-      }
-    };
-    fetchFilteredSales();
-  }, [salesStartDate, salesEndDate]);
-
-  const maxMonthlySales = useMemo(() => 
-    Math.max(...monthlySales.map((s) => s.totalTickets), 1), 
-  [monthlySales]);
-
-  const handleExportMonthlySalesCSV = () => {
-    if (monthlySales.length === 0) return;
-    const headers = ['Month', 'Total Tickets', 'Revenue (EGP)'];
-    const csvRows = [headers.join(',')];
-    monthlySales.forEach((sale) => {
-      csvRows.push(`"${sale.month}",${sale.totalTickets},${sale.revenue}`);
-    });
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'ticket-sales-report.csv');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  };
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
@@ -187,12 +138,20 @@ const OverviewTab = ({ isSuperAdmin }) => {
   };
 
   return (
-    <div className="p-4 md:p-8 bg-white dark:bg-gray-800/30 rounded-[40px] border border-smart-light/10 shadow-2xl mb-10 animate-fade-in-up w-full max-w-[1400px] mx-auto relative min-h-[500px]">
-      {(isLoadingStats || isRefreshing) && (
-        <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-30 flex justify-center items-center rounded-[40px]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-smart-light"></div>
-        </div>
-      )}
+    <div className="p-4 md:p-8 bg-white dark:bg-gray-800/30 rounded-[40px] border border-smart-light/10 shadow-2xl mb-10 w-full max-w-[1400px] mx-auto relative min-h-[500px]">
+      <AnimatePresence>
+        {(isLoadingStats || isRefreshing) && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-30 flex justify-center items-center rounded-[40px]"
+          >
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-smart-light"></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-2xl font-black text-smart-dark dark:text-white uppercase italic tracking-tighter flex items-center">
           <svg className="w-8 h-8 mr-3 text-smart-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,10 +159,12 @@ const OverviewTab = ({ isSuperAdmin }) => {
           </svg>
           System Overview
         </h2>
-        <button
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={handleManualRefresh}
           disabled={isRefreshing}
-          className="group flex items-center px-6 py-3 bg-white dark:bg-gray-800 border-2 border-smart-light/20 rounded-2xl text-[10px] font-black uppercase tracking-widest text-smart-gray dark:text-gray-400 hover:text-smart-dark dark:hover:text-white hover:border-smart-light transition-all shadow-xl hover:shadow-smart-light/20 active:scale-95 disabled:opacity-50"
+          className="group flex items-center px-6 py-3 bg-white dark:bg-gray-800 border-2 border-smart-light/20 rounded-2xl text-[10px] font-black uppercase tracking-widest text-smart-gray dark:text-gray-400 hover:text-smart-dark dark:hover:text-white hover:border-smart-light transition-all shadow-xl hover:shadow-smart-light/20 disabled:opacity-50"
         >
           <svg
             className={`w-5 h-5 mr-3 transition-transform duration-500 ${isRefreshing ? 'animate-spin text-smart-light' : 'group-hover:rotate-180'}`}
@@ -219,7 +180,7 @@ const OverviewTab = ({ isSuperAdmin }) => {
             ></path>
           </svg>
           {isRefreshing ? 'Syncing Ecosystem...' : 'Refresh Live Data'}
-        </button>
+        </motion.button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 w-full mb-10">
@@ -242,7 +203,12 @@ const OverviewTab = ({ isSuperAdmin }) => {
         <div className="relative bg-white dark:bg-gray-800 rounded-full w-[200px] h-[200px] sm:w-[220px] sm:h-[220px] lg:w-[240px] lg:h-[240px] flex-shrink-0 flex flex-col items-center justify-center p-4 shadow-[0_10px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.4)] text-center transform transition-transform hover:scale-105 group">
           <svg className="absolute inset-0 w-full h-full transform -rotate-90 pointer-events-none" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="46" fill="transparent" stroke="currentColor" strokeWidth="8" className="text-gray-100 dark:text-gray-700" />
-            <circle cx="50" cy="50" r="46" fill="transparent" stroke="currentColor" strokeWidth="8" strokeDasharray="289" strokeDashoffset={289 - (289 * (stats?.capacityPercentage || 0)) / 100} strokeLinecap="round" className="text-smart-light transition-all duration-1000 ease-out" />
+            <motion.circle 
+              initial={{ strokeDashoffset: 289 }}
+              animate={{ strokeDashoffset: 289 - (289 * (stats?.capacityPercentage || 0)) / 100 }}
+              transition={{ duration: 1.5, ease: "easeOut" }}
+              cx="50" cy="50" r="46" fill="transparent" stroke="currentColor" strokeWidth="8" strokeDasharray="289" strokeLinecap="round" className="text-smart-light" 
+            />
           </svg>
           <div className="w-12 h-12 bg-smart-light/10 rounded-full flex items-center justify-center mb-3 text-smart-light group-hover:bg-smart-light group-hover:text-white transition-colors z-10">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,7 +245,12 @@ const OverviewTab = ({ isSuperAdmin }) => {
         <div className="relative bg-white dark:bg-gray-800 rounded-full w-[200px] h-[200px] sm:w-[220px] sm:h-[220px] lg:w-[240px] lg:h-[240px] flex-shrink-0 flex flex-col items-center justify-center p-4 shadow-[0_10px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.4)] text-center transform transition-transform hover:scale-105 group">
           <svg className="absolute inset-0 w-full h-full transform -rotate-90 pointer-events-none" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="46" fill="transparent" stroke="currentColor" strokeWidth="8" className="text-gray-100 dark:text-gray-700" />
-            <circle cx="50" cy="50" r="46" fill="transparent" stroke="currentColor" strokeWidth="8" strokeDasharray="289" strokeDashoffset={289 - (289 * (stats?.activeUsers ? stats.purchasingUsers / stats.activeUsers : 0)) / 100} strokeLinecap="round" className="text-smart-glow transition-all duration-1000 ease-out" />
+            <motion.circle 
+              initial={{ strokeDashoffset: 289 }}
+              animate={{ strokeDashoffset: 289 - (289 * (stats?.activeUsers ? stats.purchasingUsers / stats.activeUsers : 0)) / 100 }}
+              transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
+              cx="50" cy="50" r="46" fill="transparent" stroke="currentColor" strokeWidth="8" strokeDasharray="289" strokeLinecap="round" className="text-smart-glow" 
+            />
           </svg>
           <div className="w-12 h-12 bg-smart-glow/10 rounded-full flex items-center justify-center mb-3 text-smart-glow group-hover:bg-smart-glow group-hover:text-white transition-colors z-10">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -298,106 +269,116 @@ const OverviewTab = ({ isSuperAdmin }) => {
         </div>
       </div>
 
-      {/* Availability Window (Original Style Refactor - Admin View) */}
+      {/* Availability Window */}
       <div className="mb-12 bg-gray-50 dark:bg-gray-900 rounded-[40px] border-l-[8px] border-[#047857] overflow-hidden relative transition-all shadow-2xl border border-gray-100 dark:border-gray-800">
         <div className="p-8 sm:p-10">
           <div className="flex flex-col xl:flex-row justify-between items-center mb-10 gap-6">
             <div className="flex items-center gap-4">
               <div className="p-2 bg-[#047857]/10 rounded-xl">
-                <svg className="w-6 h-6 text-smart-dark dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                <svg className="w-6 h-6 text-smart-dark dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
               </div>
               <h3 className="text-lg font-black text-smart-dark dark:text-white italic uppercase tracking-wider">Availability Window</h3>
             </div>
 
             <div className="flex gap-2">
-              <button onClick={() => setInsightStartDate(p => new Date(new Date(p).setDate(p.getDate() - 7)))} className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition text-smart-dark dark:text-white font-bold">
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setInsightStartDate(p => new Date(new Date(p).setDate(p.getDate() - 7)))} className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition text-smart-dark dark:text-white font-bold">
                 &larr; Prev
-              </button>
-              <button onClick={() => setInsightStartDate(new Date())} className="px-4 py-1.5 bg-smart-light/10 text-smart-light rounded-lg text-xs font-bold hover:bg-smart-light/20 transition">
+              </motion.button>
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setInsightStartDate(new Date())} className="px-4 py-1.5 bg-smart-light/10 text-smart-light rounded-lg text-xs font-bold hover:bg-smart-light/20 transition">
                 Today
-              </button>
-              <button onClick={() => setInsightStartDate(p => new Date(new Date(p).setDate(p.getDate() + 7)))} className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition text-smart-dark dark:text-white font-bold">
+              </motion.button>
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setInsightStartDate(p => new Date(new Date(p).setDate(p.getDate() + 7)))} className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition text-smart-dark dark:text-white font-bold">
                 Next &rarr;
-              </button>
+              </motion.button>
             </div>
           </div>
 
-          {loadingInsights ? (
-            <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-smart-light"></div></div>
-          ) : insights ? (
-            <>
-              <div className="grid grid-cols-7 gap-2 w-full mt-4 mb-10">
-                {insights.days.map((day, idx) => {
-                  const isToday = day.isToday;
-                  return (
-                    <div 
-                      key={idx} 
-                      className={`flex flex-col items-center justify-center py-4 px-1 rounded-2xl transition-all cursor-default min-w-0 overflow-hidden border-2 ${
-                        isToday 
-                          ? 'bg-white dark:bg-[#2a303c] border-[#8cc63f] ring-4 ring-[#8cc63f]/10 shadow-lg z-10' 
-                          : 'bg-white dark:bg-gray-800 border-transparent hover:bg-gray-50 dark:hover:bg-[#2a303c] hover:border-black/5 dark:hover:border-white/10 shadow-sm'
-                      }`}
-                    >
-                      <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-tight w-full text-center">{day.dayName.slice(0, 3)}</span>
-                      <div className={`text-2xl md:text-3xl font-black my-1 italic tracking-tighter shrink-0 ${
-                        day.crowdLevel === 'quiet' ? 'text-green-500' : 
-                        day.crowdLevel === 'moderate' ? 'text-yellow-500' : 
-                        'text-red-500'
-                      }`}>{day.count}</div>
-                      <div className="mt-1 flex justify-center items-center w-full">
-                        {day.crowdLevel === 'quiet' ? <Smile className="w-6 h-6 text-green-500" /> : 
-                         day.crowdLevel === 'moderate' ? <Meh className="w-6 h-6 text-yellow-500" /> : 
-                         <Frown className="w-6 h-6 text-red-500" />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+          <div className="min-h-[200px] relative">
+            <AnimatePresence mode="wait">
+              {loadingInsights ? (
+                <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  exit={{ opacity: 0 }} 
+                  key="loading" 
+                  className="flex justify-center py-20"
+                >
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-smart-light"></div>
+                </motion.div>
+              ) : insights ? (
+                <div key={insightStartDate.toISOString()}>
+                  <div className="grid grid-cols-7 gap-2 w-full mt-4 mb-10">
+                    {insights.days.map((day, idx) => {
+                      const isToday = day.isToday;
+                      return (
+                        <div 
+                          key={idx} 
+                          className={`flex flex-col items-center justify-center py-4 px-1 rounded-2xl transition-all cursor-default min-w-0 overflow-hidden border-2 ${
+                            isToday 
+                              ? 'bg-white dark:bg-[#2a303c] border-[#8cc63f] ring-4 ring-[#8cc63f]/10 shadow-lg z-10' 
+                              : 'bg-white dark:bg-gray-800 border-transparent hover:bg-gray-50 dark:hover:bg-[#2a303c] hover:border-black/5 dark:hover:border-white/10 shadow-sm'
+                          }`}
+                        >
+                          <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-tight w-full text-center">{day.dayName.slice(0, 3)}</span>
+                          <div className={`text-2xl md:text-3xl font-black my-1 italic tracking-tighter shrink-0 ${
+                            day.crowdLevel === 'quiet' ? 'text-green-500' : 
+                            day.crowdLevel === 'moderate' ? 'text-yellow-500' : 
+                            'text-red-500'
+                          }`}>{day.count}</div>
+                          <div className="mt-1 flex justify-center items-center w-full">
+                            {day.crowdLevel === 'quiet' ? <Smile className="w-6 h-6 text-green-500" /> : 
+                             day.crowdLevel === 'moderate' ? <Meh className="w-6 h-6 text-yellow-500" /> : 
+                             <Frown className="w-6 h-6 text-red-500" />}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
 
-              <div className="flex flex-wrap justify-center gap-6 pt-8 border-t border-gray-100 dark:border-gray-800">
-                <div className="flex items-center gap-2 px-4 py-2 bg-green-500/5 rounded-full border border-green-500/10 shadow-sm">
-                  <Smile className="w-4 h-4 text-green-500" />
-                  <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Quiet (0-30%)</span>
+                  <div className="flex flex-wrap justify-center gap-6 pt-8 border-t border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-green-500/5 rounded-full border border-green-500/10 shadow-sm">
+                      <Smile className="w-4 h-4 text-green-500" />
+                      <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Quiet (0-30%)</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/5 rounded-full border border-yellow-500/10 shadow-sm">
+                      <Meh className="w-4 h-4 text-yellow-500" />
+                      <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Moderate (31-70%)</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-red-500/5 rounded-full border border-red-500/10 shadow-sm">
+                      <Frown className="w-4 h-4 text-red-500" />
+                      <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Busy (71-100%)</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/5 rounded-full border border-yellow-500/10 shadow-sm">
-                  <Meh className="w-4 h-4 text-yellow-500" />
-                  <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Moderate (31-70%)</span>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-red-500/5 rounded-full border border-red-500/10 shadow-sm">
-                  <Frown className="w-4 h-4 text-red-500" />
-                  <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Busy (71-100%)</span>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="p-16 text-center text-gray-400 font-bold uppercase tracking-[0.2em] italic border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-3xl">Telemetry Stream Disconnected</div>
-          )}
+              ) : (
+                <div className="p-16 text-center text-gray-400 font-bold uppercase tracking-[0.2em] italic border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-3xl">Telemetry Stream Disconnected</div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
       {/* Admin Quick Actions Row */}
       {isSuperAdmin && !isLoadingStats && (
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-          <button onClick={handleResetOccupancy} className="py-4 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg hover:shadow-red-900/40 active:scale-95 flex flex-col items-center justify-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            Reset Occupancy
-          </button>
-          <button onClick={handleGenerateDummyTickets} className="py-4 bg-smart-light hover:bg-smart-dark text-white text-[10px] font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg hover:shadow-smart-light/40 active:scale-95 flex flex-col items-center justify-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-            Generate Data
-          </button>
-          <button onClick={handleToggleMockTelemetry} className="py-4 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg hover:shadow-orange-900/40 active:scale-95 flex flex-col items-center justify-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            Mock Telemetry
-          </button>
-          <button onClick={handleClearDummyData} className="py-4 bg-gray-600 hover:bg-gray-700 text-white text-[10px] font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg hover:shadow-gray-900/40 active:scale-95 flex flex-col items-center justify-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-            Clear Data
-          </button>
-          <button onClick={handleBackupDatabase} className="py-4 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg hover:shadow-blue-900/40 active:scale-95 flex flex-col items-center justify-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-            Backup DB
-          </button>
+          {[
+            { label: 'Reset Occupancy', color: 'bg-red-600 hover:bg-red-700 shadow-red-900/40', icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15', action: handleResetOccupancy },
+            { label: 'Generate Data', color: 'bg-smart-light hover:bg-smart-dark shadow-smart-light/40', icon: 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z', action: handleGenerateDummyTickets },
+            { label: 'Mock Telemetry', color: 'bg-orange-600 hover:bg-orange-700 shadow-orange-900/40', icon: 'M13 10V3L4 14h7v7l9-11h-7z', action: handleToggleMockTelemetry },
+            { label: 'Clear Data', color: 'bg-gray-600 hover:bg-gray-700 shadow-gray-900/40', icon: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16', action: handleClearDummyData },
+            { label: 'Backup DB', color: 'bg-blue-600 hover:bg-blue-700 shadow-blue-900/40', icon: 'M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4', action: handleBackupDatabase }
+          ].map((btn, idx) => (
+            <motion.button 
+              key={idx}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={btn.action} 
+              className={`py-4 ${btn.color} text-white text-[10px] font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg flex flex-col items-center justify-center gap-2`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={btn.icon}></path></svg>
+              {btn.label}
+            </motion.button>
+          ))}
         </div>
       )}
     </div>

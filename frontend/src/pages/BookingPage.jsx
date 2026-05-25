@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Smile, Meh, Frown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { socket } from '../socket';
 import WeatherWidget from '../components/WeatherWidget';
 import api from '../api';
@@ -119,9 +120,18 @@ const BookingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-smart-bg dark:bg-black flex flex-col transition-colors duration-300">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-screen bg-smart-bg dark:bg-black flex flex-col transition-colors duration-300"
+    >
       <main className="flex-grow max-w-5xl mx-auto px-4 sm:px-6 py-6 md:py-12 flex items-center justify-center w-full">
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row w-full border border-smart-light/30 dark:border-smart-light/10">
+        <motion.div 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row w-full border border-smart-light/30 dark:border-smart-light/10"
+        >
           <div className="bg-smart-dark p-6 md:p-10 text-white flex-1 flex flex-col justify-between">
             <div>
               <h2 className="text-2xl md:text-4xl font-extrabold mb-4 md:mb-6 text-smart-glow">Select Your Passes</h2>
@@ -134,44 +144,67 @@ const BookingPage = () => {
             </div>
             <div className="space-y-4 md:space-y-6">
               {["Access to all inclusive paths", "Smart app navigation", "Priority support"].map((text, i) => (
-                <div key={i} className="flex items-center space-x-4">
+                <motion.div 
+                  key={i} 
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.2 + i * 0.1 }}
+                  className="flex items-center space-x-4"
+                >
                   <div className="bg-white/10 p-2 rounded-lg">
                     <svg className="w-6 h-6 text-smart-glow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                   <span className="text-lg font-medium">{text}</span>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
 
           <div className="p-6 md:p-10 flex-1 bg-white dark:bg-gray-800 flex flex-col justify-center">
             {error && (
-              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-200 rounded-r-lg font-medium shadow-sm">
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-200 rounded-r-lg font-medium shadow-sm overflow-hidden"
+              >
                 {error}
-              </div>
+              </motion.div>
             )}
             <form onSubmit={handleProceed} className="space-y-6 md:space-y-8">
               <div>
                 <label className="block text-[10px] md:text-sm font-extrabold text-smart-dark dark:text-white mb-3 uppercase tracking-wider">Duration</label>
                 <div className="grid grid-cols-2 gap-4">
-                  <label className={`cursor-pointer border-2 rounded-xl p-4 text-center transition-all ${subscriptionType === 'one-time' ? 'border-smart-light bg-smart-light/5 dark:bg-smart-light/10 text-smart-dark dark:text-white font-extrabold scale-105' : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-smart-light/40'}`}>
+                  <motion.label 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`cursor-pointer border-2 rounded-xl p-4 text-center transition-all ${subscriptionType === 'one-time' ? 'border-smart-light bg-smart-light/5 dark:bg-smart-light/10 text-smart-dark dark:text-white font-extrabold shadow-md' : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-smart-light/40'}`}
+                  >
                     <input type="radio" className="hidden" checked={subscriptionType === 'one-time'} onChange={() => setSubscriptionType('one-time')} />
                     <div className="text-lg">One-Time</div>
                     <div className="text-[10px] opacity-80 font-normal">24h Access</div>
-                  </label>
-                  <label className={`relative cursor-pointer border-2 rounded-xl p-4 text-center transition-all ${subscriptionType === 'monthly' ? 'border-smart-light bg-smart-light/5 dark:bg-smart-light/10 text-smart-dark dark:text-white font-extrabold scale-105' : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-smart-light/40'}`}>
+                  </motion.label>
+                  <motion.label 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`relative cursor-pointer border-2 rounded-xl p-4 text-center transition-all ${subscriptionType === 'monthly' ? 'border-smart-light bg-smart-light/5 dark:bg-smart-light/10 text-smart-dark dark:text-white font-extrabold shadow-md' : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-smart-light/40'}`}
+                  >
                     <input type="radio" className="hidden" checked={subscriptionType === 'monthly'} onChange={() => setSubscriptionType('monthly')} />
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-full">Best Value!</span>
                     <div className="text-lg">Monthly</div>
                     <div className="text-[10px] opacity-80 font-normal">Unlimited</div>
-                  </label>
+                  </motion.label>
                 </div>
               </div>
 
               {subscriptionType === 'one-time' && (
-                <div className="animate-fade-in-up relative" ref={dateMenuRef}>
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="relative" 
+                  ref={dateMenuRef}
+                >
                   <label className="block text-sm font-extrabold text-smart-dark dark:text-white mb-4 uppercase tracking-wider">Select Visit Date</label>
                   <div 
                     onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}
@@ -190,47 +223,78 @@ const BookingPage = () => {
                         ) : 'CHOOSE A VISIT DATE'}
                       </span>
                     </div>
-                    <svg className={`w-5 h-5 text-gray-400 transition-transform ${isDateMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <motion.svg 
+                      animate={{ rotate: isDateMenuOpen ? 180 : 0 }}
+                      className="w-5 h-5 text-gray-400" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    </motion.svg>
                   </div>
 
-                  {isDateMenuOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-3 bg-white dark:bg-gray-800 border-2 border-smart-light/20 rounded-2xl shadow-2xl z-[100] overflow-hidden animate-fade-in py-2 max-h-[250px] overflow-y-auto custom-scrollbar">
-                      {insights?.days.map((day) => {
-                        const isSoldOut = day.count >= (insights?.capacity || 200);
-                        return (
-                          <div
-                            key={day.date}
-                            onClick={() => { if (!isSoldOut) { setSelectedDate(day.date); setIsDateMenuOpen(false); } }}
-                            className={`px-6 py-4 flex justify-between items-center transition-colors cursor-pointer ${selectedDate === day.date ? 'bg-smart-light text-white' : isSoldOut ? 'opacity-40 cursor-not-allowed bg-gray-50 dark:bg-gray-900/50' : 'hover:bg-smart-light/10 text-smart-dark dark:text-gray-200'}`}
-                          >
-                            <span className="font-black uppercase tracking-widest text-xs italic">
-                              {day.dayName} - {day.displayDate}
-                            </span>
-                            {isSoldOut && <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">Sold Out</span>}
-                            {selectedDate === day.date && !isSoldOut && <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                  <AnimatePresence>
+                    {isDateMenuOpen && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-full left-0 right-0 mt-3 bg-white dark:bg-gray-800 border-2 border-smart-light/20 rounded-2xl shadow-2xl z-[100] overflow-hidden py-2 max-h-[250px] overflow-y-auto custom-scrollbar"
+                      >
+                        {insights?.days.map((day) => {
+                          const isSoldOut = day.count >= (insights?.capacity || 200);
+                          return (
+                            <div
+                              key={day.date}
+                              onClick={() => { if (!isSoldOut) { setSelectedDate(day.date); setIsDateMenuOpen(false); } }}
+                              className={`px-6 py-4 flex justify-between items-center transition-colors cursor-pointer ${selectedDate === day.date ? 'bg-smart-light text-white' : isSoldOut ? 'opacity-40 cursor-not-allowed bg-gray-50 dark:bg-gray-900/50' : 'hover:bg-smart-light/10 text-smart-dark dark:text-gray-200'}`}
+                            >
+                              <span className="font-black uppercase tracking-widest text-xs italic">
+                                {day.dayName} - {day.displayDate}
+                              </span>
+                              {isSoldOut && <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">Sold Out</span>}
+                              {selectedDate === day.date && !isSoldOut && <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>}
+                            </div>
+                          );
+                        })}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
               )}
 
               <div className="space-y-4">
                 {Object.keys(tickets).map((type) => (
-                  <div key={type} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-smart-light/40 transition-colors">
+                  <motion.div 
+                    key={type} 
+                    whileHover={{ x: 5 }}
+                    className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-smart-light/40 transition-colors"
+                  >
                     <div>
                       <h4 className="font-bold text-smart-dark dark:text-white text-lg capitalize">{type}</h4>
                       <p className="text-sm text-smart-light font-bold">{currentPrices[type]} EGP</p>
                     </div>
                     <div className="flex items-center space-x-4">
-                      <button type="button" onClick={() => handleDecrement(type)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 flex items-center justify-center font-bold">-</button>
+                      <motion.button 
+                        whileTap={{ scale: 0.8 }}
+                        type="button" 
+                        onClick={() => handleDecrement(type)} 
+                        className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 flex items-center justify-center font-bold"
+                      >
+                        -
+                      </motion.button>
                       <span className="font-extrabold text-xl w-6 text-center text-smart-dark dark:text-white">{tickets[type]}</span>
-                      <button type="button" onClick={() => handleIncrement(type)} className="w-10 h-10 rounded-full bg-smart-light/10 text-smart-light hover:bg-smart-light/20 flex items-center justify-center font-bold">+</button>
+                      <motion.button 
+                        whileTap={{ scale: 0.8 }}
+                        type="button" 
+                        onClick={() => handleIncrement(type)} 
+                        className="w-10 h-10 rounded-full bg-smart-light/10 text-smart-light hover:bg-smart-light/20 flex items-center justify-center font-bold"
+                      >
+                        +
+                      </motion.button>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 
@@ -239,12 +303,24 @@ const BookingPage = () => {
                   <p className="text-sm text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mb-1">Total Price</p>
                   <p className="text-4xl font-black text-smart-dark dark:text-smart-glow">{totalPrice} <span className="text-xl text-gray-500 font-medium italic">EGP</span></p>
                 </div>
-                <button type="submit" className="bg-smart-light hover:bg-smart-dark text-white font-extrabold py-4 px-8 rounded-xl transition-all shadow-xl hover:-translate-y-1">Confirm Booking</button>
+                <motion.button 
+                  whileHover={{ scale: 1.05, backgroundColor: '#0B4228' }}
+                  whileTap={{ scale: 0.95 }}
+                  type="submit" 
+                  className="bg-smart-light text-white font-extrabold py-4 px-8 rounded-xl transition-all shadow-xl"
+                >
+                  Confirm Booking
+                </motion.button>
               </div>
             </form>
 
             {/* Availability Window (Original Greyish Style - Integrated) */}
-            <div className="mt-12 bg-gray-50 dark:bg-gray-900 rounded-[40px] border-l-[8px] border-[#047857] overflow-hidden relative transition-all shadow-2xl border border-gray-100 dark:border-gray-800">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="mt-12 bg-gray-50 dark:bg-gray-900 rounded-[40px] border-l-[8px] border-[#047857] overflow-hidden relative transition-all shadow-2xl border border-gray-100 dark:border-gray-800"
+            >
               <div className="p-8 sm:p-10">
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-10 gap-6">
                   <div className="flex items-center gap-3">
@@ -255,89 +331,130 @@ const BookingPage = () => {
                   </div>
 
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setInsightStartDate(p => new Date(new Date(p).setDate(p.getDate() - 7)))} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition text-smart-dark dark:text-white font-bold">
+                    <motion.button 
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      type="button" 
+                      onClick={() => setInsightStartDate(p => new Date(new Date(p).setDate(p.getDate() - 7)))} 
+                      className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition text-smart-dark dark:text-white font-bold"
+                    >
                       &larr; Prev
-                    </button>
-                    <button type="button" onClick={() => setInsightStartDate(new Date())} className="px-4 py-1 bg-smart-light/10 text-smart-light rounded-lg text-xs font-bold hover:bg-smart-light/20 transition">
+                    </motion.button>
+                    <motion.button 
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      type="button" 
+                      onClick={() => setInsightStartDate(new Date())} 
+                      className="px-4 py-1 bg-smart-light/10 text-smart-light rounded-lg text-xs font-bold hover:bg-smart-light/20 transition"
+                    >
                       Today
-                    </button>
-                    <button type="button" onClick={() => setInsightStartDate(p => new Date(new Date(p).setDate(p.getDate() + 7)))} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition text-smart-dark dark:text-white font-bold">
+                    </motion.button>
+                    <motion.button 
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      type="button" 
+                      onClick={() => setInsightStartDate(p => new Date(new Date(p).setDate(p.getDate() + 7)))} 
+                      className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition text-smart-dark dark:text-white font-bold"
+                    >
                       Next &rarr;
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
 
-                {loadingInsights ? (
-                  <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-smart-light"></div></div>
-                ) : insights ? (
-                  <>
-                    <div className="grid grid-cols-7 gap-2 w-full mt-4 mb-10">
-                      {insights.days.map((day, idx) => {
-                        const isSelected = selectedDate === day.date;
-                        const isToday = day.isToday;
-                        const isSoldOut = day.count >= (insights?.capacity || 200);
-                        return (
-                          <div 
-                            key={idx} 
-                            className={`flex flex-col items-center justify-center py-4 px-1 rounded-2xl transition-all cursor-default min-w-0 overflow-hidden border-2 ${       
-                              isSelected
-                                ? 'bg-white dark:bg-[#2a303c] border-[#8cc63f] ring-4 ring-[#8cc63f]/10 shadow-lg z-10 scale-[1.05]'
-                                : isToday
-                                  ? 'bg-green-500/10 dark:bg-green-500/5 border-green-500/50 hover:bg-green-500/20'
-                                  : 'bg-white dark:bg-gray-800 border-transparent hover:bg-gray-50 dark:hover:bg-[#2a303c] hover:border-black/5 dark:hover:border-white/10 shadow-sm'
-                            } ${isSoldOut ? 'opacity-40 grayscale-[0.5]' : ''}`}
-                          >
-                            <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-tight w-full text-center">      
-                              {day.dayName.slice(0, 3)}
-                            </div>
-                            <div
-                              className={`text-2xl md:text-3xl font-black my-1 italic tracking-tighter shrink-0 ${
-                                day.crowdLevel === 'quiet' ? 'text-green-500' : 
-                                day.crowdLevel === 'moderate' ? 'text-yellow-500' : 
-                                'text-red-500'
-                              }`}
-                            >
-                              {day.count}
-                            </div>
-                            <div className="mt-1 flex justify-center items-center w-full">
-                              {day.crowdLevel === 'quiet' ? (
-                                <Smile className="w-6 h-6 text-green-500" />
-                              ) : day.crowdLevel === 'moderate' ? (
-                                <Meh className="w-6 h-6 text-yellow-500" />
-                              ) : (
-                                <Frown className="w-6 h-6 text-red-500" />
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                <div className="min-h-[200px] relative">
+                  <AnimatePresence mode="wait">
+                    {loadingInsights ? (
+                      <motion.div 
+                        key="loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex justify-center py-20"
+                      >
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-smart-light"></div>
+                      </motion.div>
+                    ) : insights ? (
+                      <motion.div 
+                        key={insightStartDate.toISOString()}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <div className="grid grid-cols-7 gap-2 w-full mt-4 mb-10">
+                          {insights.days.map((day, idx) => {
+                            const isSelected = selectedDate === day.date;
+                            const isToday = day.isToday;
+                            const isSoldOut = day.count >= (insights?.capacity || 200);
+                            return (
+                              <motion.div 
+                                key={idx} 
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: idx * 0.03 }}
+                                className={`flex flex-col items-center justify-center py-4 px-1 rounded-2xl transition-all cursor-default min-w-0 overflow-hidden border-2 ${       
+                                  isSelected
+                                    ? 'bg-white dark:bg-[#2a303c] border-[#8cc63f] ring-4 ring-[#8cc63f]/10 shadow-lg z-10 scale-[1.05]'
+                                    : isToday
+                                      ? 'bg-green-500/10 dark:bg-green-500/5 border-green-500/50 hover:bg-green-500/20'
+                                      : 'bg-white dark:bg-gray-800 border-transparent hover:bg-gray-50 dark:hover:bg-[#2a303c] hover:border-black/5 dark:hover:border-white/10 shadow-sm'
+                                } ${isSoldOut ? 'opacity-40 grayscale-[0.5]' : ''}`}
+                              >
+                                <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-tight w-full text-center">      
+                                  {day.dayName.slice(0, 3)}
+                                </div>
+                                <div
+                                  className={`text-2xl md:text-3xl font-black my-1 italic tracking-tighter shrink-0 ${
+                                    day.crowdLevel === 'quiet' ? 'text-green-500' : 
+                                    day.crowdLevel === 'moderate' ? 'text-yellow-500' : 
+                                    'text-red-500'
+                                  }`}
+                                >
+                                  {day.count}
+                                </div>
+                                <div className="mt-1 flex justify-center items-center w-full">
+                                  {day.crowdLevel === 'quiet' ? (
+                                    <Smile className="w-6 h-6 text-green-500" />
+                                  ) : day.crowdLevel === 'moderate' ? (
+                                    <Meh className="w-6 h-6 text-yellow-500" />
+                                  ) : (
+                                    <Frown className="w-6 h-6 text-red-500" />
+                                  )}
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
 
-                    <div className="flex flex-wrap items-center justify-center gap-6 mt-6 pt-8 border-t border-gray-100 dark:border-gray-800">
-                      <div className="flex items-center justify-center gap-2 px-4 py-2 bg-green-500/5 rounded-full border border-green-500/10 shadow-sm">
-                        <Smile className="w-4 h-4 text-green-500 shrink-0" />
-                        <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Quiet (0-30%)</span>
-                      </div>
-                      <div className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500/5 rounded-full border border-yellow-500/10 shadow-sm">
-                        <Meh className="w-4 h-4 text-yellow-500 shrink-0" />
-                        <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Moderate (31-70%)</span>
-                      </div>
-                      <div className="flex items-center justify-center gap-2 px-4 py-2 bg-red-500/5 rounded-full border border-red-500/10 shadow-sm">
-                        <Frown className="w-4 h-4 text-red-500" />
-                        <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Busy (71-100%)</span>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="p-16 text-center text-gray-400 font-bold uppercase tracking-[0.2em] italic border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-3xl">System Insights Offline</div>
-                )}
+                        <div className="flex flex-wrap items-center justify-center gap-6 mt-6 pt-8 border-t border-gray-100 dark:border-gray-800">
+                          <div className="flex items-center justify-center gap-2 px-4 py-2 bg-green-500/5 rounded-full border border-green-500/10 shadow-sm">
+                            <Smile className="w-4 h-4 text-green-500 shrink-0" />
+                            <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Quiet (0-30%)</span>
+                          </div>
+                          <div className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500/5 rounded-full border border-yellow-500/10 shadow-sm">
+                            <Meh className="w-4 h-4 text-yellow-500 shrink-0" />
+                            <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Moderate (31-70%)</span>
+                          </div>
+                          <div className="flex items-center justify-center gap-2 px-4 py-2 bg-red-500/5 rounded-full border border-red-500/10 shadow-sm">
+                            <Frown className="w-4 h-4 text-red-500" />
+                            <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest">Busy (71-100%)</span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div key="offline" className="p-16 text-center text-gray-400 font-bold uppercase tracking-[0.2em] italic border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-3xl">System Insights Offline</motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
               </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </main>
-    </div>
+    </motion.div>
   );
 };
 
 export default BookingPage;
+

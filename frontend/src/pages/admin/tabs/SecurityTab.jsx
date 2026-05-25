@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../api';
 import { useUI } from '../../../context/UIContext';
 import { useTelemetry } from '../../../context/TelemetryContext';
@@ -153,40 +154,47 @@ const SecurityTab = () => {
   };
 
   return (
-    <div className="animate-fade-in-up">
+    <div>
       {/* Security Audit Logs Panel */}
       <div id="audit-logs-panel" className={`mb-10 bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 overflow-hidden transition-all duration-300 relative ${isAuditLogsExpanded ? 'h-auto max-h-[800px] flex flex-col min-h-[500px]' : ''}`}>
-        {isLoadingAuditLogs && (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-30 flex justify-center items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-smart-light"></div>
-          </div>
-        )}
+        <AnimatePresence>
+          {isLoadingAuditLogs && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-30 flex justify-center items-center"
+            >
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-smart-light"></div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="bg-smart-bg dark:bg-gray-900 px-8 py-6 border-b border-smart-light/10 flex justify-between items-center cursor-pointer hover:bg-smart-bg/80 dark:hover:bg-gray-800 transition-colors" onClick={() => setIsAuditLogsExpanded(!isAuditLogsExpanded)}>
           <h2 className="text-xl font-black text-smart-dark dark:text-white flex items-center tracking-tighter uppercase italic select-none">
             <svg className="w-6 h-6 mr-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
             Security Audit Logs
           </h2>
           <div className="flex items-center text-smart-gray dark:text-gray-400">
-            <button onClick={(e) => { e.stopPropagation(); handleClearAuditLogs(30); }} className="hidden sm:flex items-center mr-2 px-3 py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-yellow-500/20" disabled={totalAuditLogsCount === 0}>
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={(e) => { e.stopPropagation(); handleClearAuditLogs(30); }} className="hidden sm:flex items-center mr-2 px-3 py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-yellow-500/20" disabled={totalAuditLogsCount === 0}>
               <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               Clear &gt; 30 Days
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); handleClearAuditLogs(null); }} className="hidden sm:flex items-center mr-2 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-red-500/20" disabled={totalAuditLogsCount === 0}>
+            </motion.button>
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={(e) => { e.stopPropagation(); handleClearAuditLogs(null); }} className="hidden sm:flex items-center mr-2 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-red-500/20" disabled={totalAuditLogsCount === 0}>
               <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
               Clear All
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); handleExportAuditLogsCSV(); }} className="hidden sm:flex items-center mr-4 px-3 py-1.5 bg-smart-light/10 hover:bg-smart-light/20 text-smart-light rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-smart-light/20" disabled={totalAuditLogsCount === 0}>
+            </motion.button>
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={(e) => { e.stopPropagation(); handleExportAuditLogsCSV(); }} className="hidden sm:flex items-center mr-4 px-3 py-1.5 bg-smart-light/10 hover:bg-smart-light/20 text-smart-light rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-smart-light/20" disabled={totalAuditLogsCount === 0}>
               <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
               Export CSV
-            </button>
+            </motion.button>
             <span className="text-xs font-bold mr-4 uppercase tracking-widest">{totalAuditLogsCount} Records</span>
-            <svg className={`w-6 h-6 transform transition-transform duration-300 ${isAuditLogsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <motion.svg animate={{ rotate: isAuditLogsExpanded ? 180 : 0 }} className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
+            </motion.svg>
           </div>
         </div>
         {isAuditLogsExpanded && (
-          <>
+          <div className="overflow-hidden flex flex-col h-full">
             <div className="bg-smart-bg dark:bg-gray-900 z-20 border-b border-smart-light/10">
               <table className="w-full text-left table-fixed">
                 <thead>
@@ -205,7 +213,7 @@ const SecurityTab = () => {
               <table className="w-full text-left table-fixed border-collapse">
                 <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
                   {auditLogs.map(log => (
-                    <tr key={log._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors animate-fade-in">
+                    <tr key={log._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors">
                       <td className="px-4 py-3 pl-6 text-[11px] font-bold text-smart-gray dark:text-gray-400 w-[200px]">{new Date(log.createdAt).toLocaleString()}</td>
                       <td className="px-4 py-3 font-black text-smart-dark dark:text-white italic w-1/4 overflow-hidden truncate">{log.email}</td>
                       <td className="px-4 py-3 font-medium text-smart-dark dark:text-gray-300 overflow-hidden truncate">{log.action || 'Authentication / System'}</td>
@@ -233,13 +241,13 @@ const SecurityTab = () => {
               <div className="bg-smart-bg/30 dark:bg-gray-900/30 px-8 py-4 border-t border-smart-light/10 flex justify-between items-center">
                 <span className="text-[10px] font-bold text-smart-gray dark:text-gray-400 uppercase tracking-widest hidden sm:inline">Showing {(auditLogPage - 1) * 10 + 1} to {Math.min(auditLogPage * 10, totalAuditLogsCount)} of {totalAuditLogsCount}</span>
                 <div className="flex space-x-2 ml-auto sm:ml-0">
-                  <button onClick={() => setAuditLogPage((p) => Math.max(1, p - 1))} disabled={auditLogPage === 1} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Prev</button>
-                  <span className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-smart-dark dark:text-white flex items-center">Page {auditLogPage} of {totalAuditLogPages}</span>
-                  <button onClick={() => setAuditLogPage((p) => Math.min(totalAuditLogPages, p + 1))} disabled={auditLogPage >= totalAuditLogPages} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Next</button>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setAuditLogPage((p) => Math.max(1, p - 1))} disabled={auditLogPage === 1} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Prev</motion.button>
+                  <span className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-smart-dark dark:text-white flex items-center italic">Page {auditLogPage} of {totalAuditLogPages}</span>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setAuditLogPage((p) => Math.min(totalAuditLogPages, p + 1))} disabled={auditLogPage >= totalAuditLogPages} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Next</motion.button>
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
@@ -251,14 +259,14 @@ const SecurityTab = () => {
             Banned IP Addresses
           </h2>
           <div className="flex items-center text-smart-gray dark:text-gray-400">
-            <button onClick={(e) => { e.stopPropagation(); handleExportBannedIPsCSV(); }} className="hidden sm:flex items-center mr-4 px-3 py-1.5 bg-smart-light/10 hover:bg-smart-light/20 text-smart-light rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-smart-light/20" disabled={totalBannedIPsCount === 0}>
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={(e) => { e.stopPropagation(); handleExportBannedIPsCSV(); }} className="hidden sm:flex items-center mr-4 px-3 py-1.5 bg-smart-light/10 hover:bg-smart-light/20 text-smart-light rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-smart-light/20" disabled={totalBannedIPsCount === 0}>
               <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
               Export CSV
-            </button>
+            </motion.button>
             <span className="text-xs font-bold mr-4 uppercase tracking-widest">{totalBannedIPsCount} Banned</span>
-            <svg className={`w-6 h-6 transform transition-transform duration-300 ${isBannedIPsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <motion.svg animate={{ rotate: isBannedIPsExpanded ? 180 : 0 }} className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
+            </motion.svg>
           </div>
         </div>
         {isBannedIPsExpanded && (
@@ -287,12 +295,12 @@ const SecurityTab = () => {
               <table className="w-full text-left table-fixed border-collapse">
                 <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
                   {bannedIPs.map(banned => (
-                    <tr key={banned._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors animate-fade-in">
+                    <tr key={banned._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors">
                       <td className="px-4 py-3 pl-6 font-mono text-[13px] font-bold text-smart-dark dark:text-white w-1/4 overflow-hidden truncate">{banned.ipAddress}</td>
                       <td className="px-4 py-3 text-xs text-smart-gray dark:text-gray-400 font-medium overflow-hidden truncate">{banned.reason}</td>
                       <td className="px-4 py-3 text-[11px] font-bold text-smart-gray dark:text-gray-500 w-[180px]">{new Date(banned.createdAt).toLocaleString()}</td>
                       <td className="px-4 py-3 pr-6 text-right w-[120px]">
-                        <button onClick={() => handleUnbanIP(banned._id)} className="px-4 py-1.5 bg-smart-light/10 hover:bg-smart-light/20 text-smart-dark dark:text-smart-glow rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20">Unban</button>
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleUnbanIP(banned._id)} className="px-4 py-1.5 bg-smart-light/10 hover:bg-smart-light/20 text-smart-dark dark:text-smart-glow rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20">Unban</motion.button>
                       </td>
                     </tr>
                   ))}
@@ -307,9 +315,9 @@ const SecurityTab = () => {
               <div className="bg-smart-bg/30 dark:bg-gray-900/30 px-8 py-4 border-t border-smart-light/10 flex justify-between items-center">
                 <span className="text-[10px] font-bold text-smart-gray dark:text-gray-400 uppercase tracking-widest hidden sm:inline">Showing {(bannedIPsPage - 1) * 10 + 1} to {Math.min(bannedIPsPage * 10, totalBannedIPsCount)} of {totalBannedIPsCount}</span>
                 <div className="flex space-x-2 ml-auto sm:ml-0">
-                  <button onClick={() => setBannedIPsPage((p) => Math.max(1, p - 1))} disabled={bannedIPsPage === 1} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Prev</button>
-                  <span className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-smart-dark dark:text-white flex items-center">Page {bannedIPsPage} of {totalBannedIPsPages}</span>
-                  <button onClick={() => setBannedIPsPage((p) => Math.min(totalBannedIPsPages, p + 1))} disabled={bannedIPsPage >= totalBannedIPsPages} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Next</button>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setBannedIPsPage((p) => Math.max(1, p - 1))} disabled={bannedIPsPage === 1} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Prev</motion.button>
+                  <span className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-smart-dark dark:text-white flex items-center italic">Page {bannedIPsPage} of {totalBannedIPsPages}</span>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setBannedIPsPage((p) => Math.min(totalBannedIPsPages, p + 1))} disabled={bannedIPsPage >= totalBannedIPsPages} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Next</motion.button>
                 </div>
               </div>
             )}

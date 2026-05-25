@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../api';
 import { useUI } from '../../../context/UIContext';
 
@@ -82,9 +83,15 @@ const CollectionsTab = () => {
             <button onClick={() => { setCashFilterStatus('PENDING'); setCashPage(1); }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${cashFilterStatus === 'PENDING' ? 'bg-smart-light text-white shadow-md' : 'text-smart-gray hover:text-smart-dark dark:hover:text-white'}`}>Pending</button>
             <button onClick={() => { setCashFilterStatus('PAID'); setCashPage(1); }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${cashFilterStatus === 'PAID' ? 'bg-smart-light text-white shadow-md' : 'text-smart-gray hover:text-smart-dark dark:hover:text-white'}`}>History</button>
           </div>
-          <button onClick={handleManualRefresh} disabled={isRefreshing} className="p-2 hover:bg-smart-light/10 rounded-full transition-colors disabled:opacity-50">
+          <motion.button 
+            whileHover={{ rotate: 180 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={handleManualRefresh} 
+            disabled={isRefreshing} 
+            className="p-2 hover:bg-smart-light/10 rounded-full transition-colors disabled:opacity-50"
+          >
             <svg className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-          </button>
+          </motion.button>
         </div>
       </div>
 
@@ -93,11 +100,18 @@ const CollectionsTab = () => {
       </div>
 
       <div className="overflow-x-auto custom-scrollbar relative min-h-[400px]">
-        {isLoadingPendingCash && (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-30 flex justify-center items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-smart-light"></div>
-          </div>
-        )}
+        <AnimatePresence>
+          {isLoadingPendingCash && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-30 flex justify-center items-center"
+            >
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-smart-light"></div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         <div className="bg-smart-bg dark:bg-gray-900 z-20 border-b border-smart-light/10">
           <table className="w-full text-left table-fixed">
@@ -116,7 +130,7 @@ const CollectionsTab = () => {
           <table className="w-full text-left table-fixed border-collapse">
             <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
               {filteredCashTickets.map(ticket => (
-                <tr key={ticket._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors animate-fade-in">
+                <tr key={ticket._id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors">
                   <td className="px-6 py-5 font-mono text-[11px] font-black text-smart-dark dark:text-white w-1/4 overflow-hidden truncate">#{ticket._id.toString().slice(-8).toUpperCase()}</td>
                   <td className="px-6 py-5 overflow-hidden">
                     <div className="font-black text-smart-dark dark:text-white italic uppercase text-xs truncate">{ticket.userId?.name || 'Unknown User'}</div>
@@ -125,7 +139,14 @@ const CollectionsTab = () => {
                   <td className="px-6 py-5 text-center w-[150px]"><span className="text-lg font-black text-smart-dark dark:text-smart-glow italic">{ticket.price} EGP</span></td>
                   <td className="px-6 py-5 pr-8 text-right w-1/4">
                     {ticket.paymentStatus === 'PENDING' ? (
-                      <button onClick={() => handleConfirmCash(ticket._id, ticket.price)} className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all">Collect</button>
+                      <motion.button 
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleConfirmCash(ticket._id, ticket.price)} 
+                        className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
+                      >
+                        Collect
+                      </motion.button>
                     ) : (
                       <span className="bg-smart-light/10 text-smart-dark dark:text-smart-glow text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest border border-smart-light/20">Collected</span>
                     )}
@@ -143,9 +164,9 @@ const CollectionsTab = () => {
           <div className="bg-smart-bg/30 dark:bg-gray-900/30 px-8 py-4 border-t border-smart-light/10 flex justify-between items-center">
             <span className="text-[10px] font-bold text-smart-gray dark:text-gray-400 uppercase tracking-widest hidden sm:inline">Showing {(cashPage - 1) * 10 + 1} to {Math.min(cashPage * 10, totalCashTicketsCount)} of {totalCashTicketsCount}</span>
             <div className="flex space-x-2 ml-auto sm:ml-0">
-              <button onClick={() => setCashPage((p) => Math.max(1, p - 1))} disabled={cashPage === 1} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Prev</button>
-              <span className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-smart-dark dark:text-white flex items-center">Page {cashPage} of {totalCashPages}</span>
-              <button onClick={() => setCashPage((p) => Math.min(totalCashPages, p + 1))} disabled={cashPage >= totalCashPages} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Next</button>
+              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setCashPage((p) => Math.max(1, p - 1))} disabled={cashPage === 1} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Prev</motion.button>
+              <span className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-smart-dark dark:text-white flex items-center italic">Page {cashPage} of {totalCashPages}</span>
+              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setCashPage((p) => Math.min(totalCashPages, p + 1))} disabled={totalCashPages <= cashPage} className="px-4 py-2 bg-white dark:bg-gray-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-smart-light/10">Next</motion.button>
             </div>
           </div>
         )}
