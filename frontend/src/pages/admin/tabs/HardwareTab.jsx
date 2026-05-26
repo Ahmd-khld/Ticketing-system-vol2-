@@ -6,7 +6,11 @@ import api from '../../../api';
 import { useUI } from '../../../context/UIContext';
 import { useTelemetry } from '../../../context/TelemetryContext';
 
-const HardwareTab = ({ isSuperAdmin }) => {
+const HardwareTab = () => {
+  const superAdminEmail = (import.meta.env.VITE_SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase();
+  const currentAdminEmail = (localStorage.getItem('adminEmail') || '').toLowerCase().trim();
+  const isSuperAdmin = currentAdminEmail === superAdminEmail;
+
   const navigate = useNavigate();
   const { showModal, showConfirm } = useUI();
   const {

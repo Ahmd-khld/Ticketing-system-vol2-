@@ -112,7 +112,8 @@ const AdminLayout = () => {
     localStorage.removeItem('role');
     localStorage.removeItem('userId');
     localStorage.removeItem('adminEmail');
-    navigate('/login');
+    // Force a full page redirect to /login to ensure all state is cleared and avoid any route/animation deadlocks
+    window.location.href = '/login';
   };
 
   const navItems = [

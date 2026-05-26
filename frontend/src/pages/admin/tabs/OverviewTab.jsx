@@ -4,7 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../api';
 import { useUI } from '../../../context/UIContext';
 
-const OverviewTab = ({ isSuperAdmin }) => {
+const OverviewTab = () => {
+  const superAdminEmail = (import.meta.env.VITE_SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase();
+  const currentAdminEmail = (localStorage.getItem('adminEmail') || '').toLowerCase().trim();
+  const isSuperAdmin = currentAdminEmail === superAdminEmail;
+
   const { showModal, showConfirm } = useUI();
   const [stats, setStats] = useState(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);

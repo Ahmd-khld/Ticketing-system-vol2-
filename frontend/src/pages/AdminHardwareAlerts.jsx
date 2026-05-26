@@ -33,9 +33,6 @@ const isTokenExpired = (token) => {
 const AdminHardwareAlerts = () => {
   const navigate = useNavigate();
 
-  // Early return if token is missing
-  if (!localStorage.getItem('token')) return null;
-
   const {
     alerts,
     setAlerts,
@@ -181,7 +178,10 @@ const AdminHardwareAlerts = () => {
         onAuditClick={onAuditClick}
         onLogout={() => {
            localStorage.removeItem('token');
-           navigate('/');
+           localStorage.removeItem('role');
+           localStorage.removeItem('userId');
+           localStorage.removeItem('adminEmail');
+           window.location.href = '/login';
         }}
       />
 

@@ -14,7 +14,7 @@ const AdminTelemetry = () => {
     localStorage.removeItem('role');
     localStorage.removeItem('userId');
     localStorage.removeItem('adminEmail');
-    navigate('/');
+    window.location.href = '/login';
   };
 
   return (
