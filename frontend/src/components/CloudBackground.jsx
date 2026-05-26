@@ -4,12 +4,12 @@ import styled from 'styled-components';
 const CloudBackground = () => {
   // Balanced parameters for high visibility
   const clouds = [
-    { top: '15%', scale: 1.5, duration: '80s', delay: '0s', opacity: 0.4 },
-    { top: '35%', scale: 1.0, duration: '65s', delay: '-20s', opacity: 0.35 },
-    { top: '55%', scale: 2.0, duration: '110s', delay: '-50s', opacity: 0.3 },
-    { top: '75%', scale: 1.2, duration: '90s', delay: '-10s', opacity: 0.38 },
-    { top: '10%', scale: 1.8, duration: '130s', delay: '-70s', opacity: 0.32 },
-    { top: '45%', scale: 2.5, duration: '160s', delay: '-40s', opacity: 0.25 },
+    { top: '15%', scale: 1.5, duration: '80s', delay: '0s', opacity: 0.15 },
+    { top: '35%', scale: 1.0, duration: '65s', delay: '-20s', opacity: 0.12 },
+    { top: '55%', scale: 2.0, duration: '110s', delay: '-50s', opacity: 0.1 },
+    { top: '75%', scale: 1.2, duration: '90s', delay: '-10s', opacity: 0.14 },
+    { top: '10%', scale: 1.8, duration: '130s', delay: '-70s', opacity: 0.11 },
+    { top: '45%', scale: 2.5, duration: '160s', delay: '-40s', opacity: 0.08 },
   ];
 
   return (
@@ -53,7 +53,7 @@ const StyledWrapper = styled.div`
     position: relative;
     width: 200px;
     height: 100px;
-    filter: drop-shadow(0 10px 30px rgba(255, 255, 255, 0.05));
+    filter: blur(8px) drop-shadow(0 10px 30px rgba(255, 255, 255, 0.02));
   }
 
   /* Cartoon Cloud Shape using CSS */

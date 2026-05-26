@@ -31,6 +31,8 @@ bool SecureSocket::post(const char* host, int port, const char* path, const Stri
     sendCmd += httpRequest.length();
 
     if (sendAT(sendCmd, ">", 2000)) {
+        Serial.println(F("[Network] Sending HTTPS Request:"));
+        Serial.println(httpRequest);
         _wifi.getSerial().print(httpRequest);
         bool success = waitForResponse("200 OK", 5000);
         sendAT(F("AT+CIPCLOSE=0"), "OK", 1000);

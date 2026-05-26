@@ -54,6 +54,7 @@ async function runTests() {
         status: 'INACTIVE', 
         validFrom: now,
         validUntil: future,
+        paymentMethod: 'CASH',
         paymentStatus: 'PENDING',
         promoCodeName: 'Auto-generated for GRC testing'
       });

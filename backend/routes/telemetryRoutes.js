@@ -105,25 +105,48 @@ router.post('/hardware/debug', express.text({ type: '*/*' }), (req, res) => {
 
 // @route   POST /api/hardware/telemetry
 // @desc    Receive telemetry from Arduino (Supports signature and raw body)
-router.post('/hardware/telemetry', express.text({ type: '*/*' }), async (req, res) => {
-  if (mockMode) {
-    return res.status(200).json({ message: 'Mock Mode Active. Ignoring real data.' });
-  }
-
+router.post('/hardware/telemetry', async (req, res) => {
+  console.log('[Telemetry] Inbound request from:', req.ip);
+  
   try {
     let rawBody = req.body;
+    
+    // Log raw body for debugging parsing errors
+    // If req.body is already an object (e.g. parsed by express.json), log it as JSON
+    console.log('[Telemetry] Received Body:', typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody));
+
+    if (!rawBody || (typeof rawBody === 'string' && rawBody.trim() === '')) {
+      console.warn('[Telemetry] Received empty body');
+      return res.status(400).json({ message: 'Empty telemetry payload' });
+    }
+
     let signature = null;
+    let jsonPart = rawBody;
 
     // Handle Arduino's signature format: JSON|sig:SIGNATURE
     if (typeof rawBody === 'string' && rawBody.includes('|sig:')) {
       const parts = rawBody.split('|sig:');
-      rawBody = parts[0];
+      jsonPart = parts[0];
       signature = parts[1];
-      // Note: In a production environment, you would verify the signature here 
-      // using the ARDUINO_AES_KEY.
+      console.log('[Telemetry] Signature detected:', signature);
     }
 
-    const payload = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
+    let payload;
+    try {
+      // Robust fix for Arduino sending '?' for floating point values
+      // This happens when the Arduino's snprintf/dtostrf implementation fails or is misconfigured.
+      const sanitizedJson = jsonPart.replace(/:\s*\?/g, ': 0');
+      
+      if (sanitizedJson !== jsonPart) {
+        console.warn('[Telemetry] Sanitized payload (replaced "?" with "0")');
+      }
+
+      payload = typeof sanitizedJson === 'string' ? JSON.parse(sanitizedJson.trim()) : sanitizedJson;
+    } catch (parseErr) {
+      console.error('[Telemetry] JSON Parse Error:', parseErr.message);
+      console.error('[Telemetry] Failed to parse:', jsonPart);
+      return res.status(400).json({ message: 'Invalid JSON format', error: parseErr.message });
+    }
 
     const {
       moisture,
@@ -144,6 +167,7 @@ router.post('/hardware/telemetry', express.text({ type: '*/*' }), async (req, re
       rgbDistance === undefined ||
       servoDistance === undefined
     ) {
+      console.warn('[Telemetry] Missing required fields in payload:', payload);
       return res.status(400).json({ message: 'Invalid telemetry payload structure' });
     }
 
@@ -177,6 +201,12 @@ router.post('/hardware/telemetry', express.text({ type: '*/*' }), async (req, re
     const io = req.app.get('io');
     if (io) {
       io.emit('telemetryUpdate', { ...latestState });
+    }
+
+    // If mock mode is active, we still acknowledge and process real data,
+    // but we notify the log that real data is being merged/accepted.
+    if (mockMode) {
+      console.log('[Telemetry] Real data accepted while Mock Mode is ACTIVE');
     }
 
     res.status(200).json({ message: 'Telemetry received, verified and broadcasted.' });

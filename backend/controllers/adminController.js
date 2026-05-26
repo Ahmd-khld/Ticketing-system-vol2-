@@ -388,15 +388,12 @@ const getUsers = async (req, res) => {
 
     const query = {};
     if (role === 'admin') {
-      // SUB-ADMIN SECURITY: Sub-admins can NEVER see or list other admins EXCEPT themselves.
       if (!isSuperAdmin(req)) {
-        // Allow sub-admins to see their own account if they search for it
         query.$and = [{ role: { $in: ['admin', 'sub-admin'] } }, { _id: req.user._id }];
       } else {
         query.role = { $in: ['admin', 'sub-admin'] };
       }
     } else {
-      // DEFAULT: Show regular users. If sub-admin, also allow them to see themselves in the list if they appear.
       if (isSuperAdmin(req)) {
         query.role = 'user';
       } else {
@@ -420,14 +417,6 @@ const getUsers = async (req, res) => {
       }
     }
 
-    if (role === 'admin') {
-      const admins = await User.find(query)
-        .select('-password -savedCards')
-        .sort({ createdAt: -1 })
-        .lean();
-      return res.status(200).json({ users: admins });
-    }
-
     const [usersRaw, total] = await Promise.all([
       User.find(query)
         .select('-password -savedCards')
@@ -438,6 +427,15 @@ const getUsers = async (req, res) => {
       User.countDocuments(query),
     ]);
 
+    if (role === 'admin') {
+       return res.status(200).json({
+        users: usersRaw,
+        totalUsers: total,
+        currentPage: page,
+        totalPages: Math.ceil(total / limit) || 1,
+      });
+    }
+
     // Efficiently fetch ticket counts for all users in the current page
     const userIds = usersRaw.map((u) => u._id);
     const ticketCounts = await Ticket.aggregate([
@@ -445,7 +443,6 @@ const getUsers = async (req, res) => {
       { $group: { _id: '$userId', count: { $sum: 1 } } },
     ]);
 
-    // Map counts back to users
     const countMap = {};
     ticketCounts.forEach((c) => {
       countMap[c._id.toString()] = c.count;
@@ -823,7 +820,7 @@ const resetOccupancy = async (req, res) => {
 const getHardwareAlerts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const query = {};
@@ -839,7 +836,6 @@ const getHardwareAlerts = async (req, res) => {
       query.type = req.query.type;
     }
 
-    // Run fetch and count in parallel, and use .lean()
     const [alerts, total] = await Promise.all([
       HardwareAlert.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       HardwareAlert.countDocuments(query),
@@ -849,7 +845,7 @@ const getHardwareAlerts = async (req, res) => {
       alerts,
       totalAlerts: total,
       currentPage: page,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / limit) || 1,
     });
   } catch (error) {
     console.error('Fetch Alerts Error:', error);
@@ -873,7 +869,7 @@ const getAuditLogs = async (req, res) => {
   if (!isSuperAdmin(req)) return res.status(403).json({ message: 'Super Admin access required.' });
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const [logs, total] = await Promise.all([
@@ -885,7 +881,7 @@ const getAuditLogs = async (req, res) => {
       logs,
       totalLogs: total,
       currentPage: page,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / limit) || 1,
     });
   } catch (error) {
     console.error('Fetch Audit Logs Error:', error);
@@ -897,7 +893,7 @@ const getBannedIPs = async (req, res) => {
   if (!isSuperAdmin(req)) return res.status(403).json({ message: 'Super Admin access required.' });
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const query = {};
@@ -944,7 +940,7 @@ const unbanIP = async (req, res) => {
 const getWhitelistedIPs = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const query = {};
@@ -1199,10 +1195,19 @@ const createBackup = (req, res) => {
 
 const getBackups = (req, res) => {
   try {
-    const backupDir = path.join(__dirname, '../backups');
-    if (!fs.existsSync(backupDir)) return res.json([]);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-    const files = fs
+    const backupDir = path.join(__dirname, '../backups');
+    if (!fs.existsSync(backupDir)) return res.json({
+      backups: [],
+      totalBackups: 0,
+      currentPage: 1,
+      totalPages: 1
+    });
+
+    const allFiles = fs
       .readdirSync(backupDir)
       .filter((file) => file.endsWith('.gzip'))
       .map((file) => {
@@ -1215,7 +1220,15 @@ const getBackups = (req, res) => {
       })
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    res.status(200).json(files);
+    const total = allFiles.length;
+    const paginatedFiles = allFiles.slice(skip, skip + limit);
+
+    res.status(200).json({
+      backups: paginatedFiles,
+      totalBackups: total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit) || 1,
+    });
   } catch (error) {
     console.error('Fetch Backups Error:', error);
     res.status(500).json({ message: 'Error fetching backups' });
@@ -1372,6 +1385,8 @@ const generateMockData = async (req, res) => {
           validUntil.setHours(23, 59, 59, 999);
         }
 
+        const isCash = Math.random() > 0.7; // 30% are cash payments
+
         ticketDocs.push({
           userId: user._id,
           ticketType: type,
@@ -1380,6 +1395,8 @@ const generateMockData = async (req, res) => {
           status: status,
           validFrom,
           validUntil,
+          paymentMethod: isCash ? 'CASH' : 'ONLINE',
+          paymentStatus: 'PAID', // History is always paid
           createdAt: new Date(validFrom),
           updatedAt: new Date(validFrom), // Logical historical timestamps
         });
@@ -1413,12 +1430,16 @@ const generateMockData = async (req, res) => {
           if (Math.random() > 0.9) currentStatus = 'CANCELLED';
         }
 
+        const isCash = Math.random() > 0.7; // 30% are cash payments
+
         ticketDocs.push({
           userId: user._id,
           ticketType: type,
           subscriptionPlan: 'one-time',
           price: ticketPrices[type],
-          status: currentStatus,
+          status: isCash ? 'INACTIVE' : currentStatus,
+          paymentMethod: isCash ? 'CASH' : 'ONLINE',
+          paymentStatus: isCash ? 'PENDING' : 'PAID',
           validFrom,
           validUntil,
           createdAt: new Date(),
@@ -1574,6 +1595,10 @@ const activateCashTicket = async (req, res) => {
 const getPendingCashTickets = async (req, res) => {
   try {
     const { status } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     const query = { paymentMethod: 'CASH' };
     
     if (status === 'PAID') {
@@ -1582,17 +1607,27 @@ const getPendingCashTickets = async (req, res) => {
       query.paymentStatus = 'PENDING';
     }
 
-    const tickets = await Ticket.find(query)
-      .populate('userId', 'name email phone')
-      .sort({ createdAt: -1 })
-      .lean();
+    const [tickets, total] = await Promise.all([
+      Ticket.find(query)
+        .populate('userId', 'name email phone')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Ticket.countDocuments(query),
+    ]);
 
     // Prevent Response Caching
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
 
-    res.status(200).json(tickets);
+    res.status(200).json({
+      tickets,
+      totalTickets: total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit) || 1,
+    });
   } catch (error) {
     console.error('Fetch Cash Tickets Error:', error);
     res.status(500).json({ message: 'Error fetching cash tickets' });

@@ -122,7 +122,7 @@ const Ticket = mongoose.model('Ticket', ticketSchema);
 // We use a dynamic require to avoid circular dependencies with server.js
 const broadcastTicket = (ticket) => {
   try {
-    const { io } = require('../server');
+    const { io } = require('../app');
     if (io) {
       // 1. Update the specific user's ticket room
       io.to(`user-${ticket.userId}-tickets`).emit('newTicketsPurchased', {

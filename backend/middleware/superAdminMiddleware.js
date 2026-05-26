@@ -12,20 +12,27 @@ const requireAdmin = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log(`DEBUG_AUTH: Decoded ID from token: ${decoded.id || decoded._id || decoded.userId}`);
+    const secret = (process.env.JWT_SECRET || '').trim();
 
-    const user = await User.findById(decoded.id || decoded._id || decoded.userId);
+    if (!secret) {
+      console.error('[AdminAuth] JWT_SECRET is not defined');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    const decoded = jwt.verify(token, secret);
+    const userId = decoded.id || decoded._id || decoded.userId;
+    console.log(`DEBUG_AUTH: Decoded ID from token: ${userId}`);
+
+    const user = await User.findById(userId);
     if (user) {
       console.log(`DEBUG_AUTH: Found user: ${user.email} | Role: ${user.role}`);
     } else {
-      console.warn(`DEBUG_AUTH: No user found for ID: ${decoded.id || decoded._id || decoded.userId}`);
+      console.warn(`DEBUG_AUTH: No user found for ID: ${userId}`);
     }
 
     const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase().trim();
 
     // Allow both 'admin' and 'sub-admin' roles to pass this check
-    // DEBUG BYPASS: Explicitly allow the primary Super Admin email
     if (!user || (user.role !== 'admin' && user.role !== 'sub-admin' && user.email.toLowerCase().trim() !== superAdminEmail)) {
       console.warn(`DEBUG_AUTH: Denied access for ${user?.email || 'Unknown'}. Role was ${user?.role}`);
       return res.status(403).json({ 
@@ -42,7 +49,7 @@ const requireAdmin = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('DEBUG_AUTH: JWT Verification Error:', error.message);
-    return res.status(401).json({ message: 'Unauthorized: Invalid or expired token' });
+    return res.status(401).json({ message: `Unauthorized: ${error.message}` });
   }
 };
 
@@ -55,13 +62,21 @@ const requireSuperAdmin = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id || decoded._id || decoded.userId);
+    const secret = (process.env.JWT_SECRET || '').trim();
 
-    const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase();
-    if (!user || user.role !== 'admin' || user.email.toLowerCase() !== superAdminEmail) {
+    if (!secret) {
+      console.error('[SuperAdminAuth] JWT_SECRET is not defined');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    const decoded = jwt.verify(token, secret);
+    const userId = decoded.id || decoded._id || decoded.userId;
+    const user = await User.findById(userId);
+
+    const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase().trim();
+    if (!user || user.role !== 'admin' || user.email.toLowerCase().trim() !== superAdminEmail) {
       // If a legitimate sub-admin tries to access a super-admin route, log the attempt
-      if (user && user.role === 'admin') {
+      if (user && (user.role === 'admin' || user.role === 'sub-admin')) {
         try {
           const clientIp = req.ip || 'unknown-client';
           const log = await AdminAuditLog.create({
@@ -85,7 +100,8 @@ const requireSuperAdmin = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Unauthorized: Invalid or expired token' });
+    console.error('[SuperAdminAuth] JWT Verification Error:', error.message);
+    return res.status(401).json({ message: `Unauthorized: ${error.message}` });
   }
 };
 

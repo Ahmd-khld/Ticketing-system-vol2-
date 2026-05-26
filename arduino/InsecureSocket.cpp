@@ -31,6 +31,8 @@ bool InsecureSocket::post(const char* host, int port, const char* path, const St
     sendCmd += httpRequest.length();
 
     if (sendAT(sendCmd, ">", 3000)) {
+        Serial.println(F("[Network] Sending HTTP Request:"));
+        Serial.println(httpRequest);
         _wifi.getSerial().print(httpRequest);
         bool success = waitForResponse("200 OK", 5000);
         if (!success) Serial.println(F("[Socket] HTTP 200 Not Received"));

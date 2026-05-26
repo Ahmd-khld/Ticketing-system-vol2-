@@ -9,9 +9,6 @@ const AdminUserTickets = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
 
-  // Early return if token is missing (prevents crash during logout transition)
-  if (!localStorage.getItem('token')) return null;
-
   const location = useLocation();
   const { showModal } = useUI();
   const [tickets, setTickets] = useState([]);
@@ -124,6 +121,14 @@ const AdminUserTickets = () => {
     return true;
   });
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('adminEmail');
+    window.location.href = '/login';
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-smart-bg dark:bg-gray-900 flex items-center justify-center">
@@ -134,7 +139,11 @@ const AdminUserTickets = () => {
 
   return (
     <div className="min-h-screen bg-smart-bg dark:bg-gray-900 transition-colors duration-300">
-      <AdminHeader title="Ticket Management" />
+      <AdminHeader 
+        title="Ticket Management" 
+        userName={localStorage.getItem('adminEmail')}
+        onLogout={handleLogout}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
         {/* User Info Header */}

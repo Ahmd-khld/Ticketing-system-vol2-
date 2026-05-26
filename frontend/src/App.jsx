@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
 import LandingPage from './pages/LandingPage';
 import BookingPage from './pages/BookingPage';
@@ -59,6 +60,57 @@ const PrivateRoute = ({ children }) => {
   return children;
 };
 
+const AnimatedRoutes = ({ isSuperAdmin }) => {
+  const location = useLocation();
+  
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname.split('/')[1]} // Animate on main path changes to avoid double animation with tabs
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex-grow w-full flex flex-col"
+      >
+        <Routes location={location}>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/book" element={<PrivateRoute><BookingPage /></PrivateRoute>} />
+          <Route path="/payment" element={<PrivateRoute><Payment /></PrivateRoute>} />
+          <Route path="/about" element={<About />} />
+          <Route path="/map" element={<ParkMap />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
+
+          {/* Admin Nested Routes */}
+          <Route path="/admin/dashboard" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={<OverviewTab isSuperAdmin={isSuperAdmin} />} />
+            <Route path="users" element={<UsersTab isSuperAdmin={isSuperAdmin} />} />
+            <Route path="hardware" element={<HardwareTab isSuperAdmin={isSuperAdmin} />} />
+            <Route path="collections" element={<CollectionsTab isSuperAdmin={isSuperAdmin} />} />
+            <Route path="access" element={<AccessControlTab isSuperAdmin={isSuperAdmin} />} />
+            <Route path="security" element={<SecurityTab isSuperAdmin={isSuperAdmin} />} />
+            <Route path="system" element={<SystemTab isSuperAdmin={isSuperAdmin} />} />
+            <Route path="sales" element={<SalesTab isSuperAdmin={isSuperAdmin} />} />
+          </Route>
+
+          <Route path="/admin/alerts" element={<AdminRoute><AdminHardwareAlerts /></AdminRoute>} />
+          <Route path="/admin/users/:userId/tickets" element={<AdminRoute><AdminUserTickets /></AdminRoute>} />
+          <Route path="/admin/telemetry" element={<AdminRoute><AdminTelemetry socket={socket} /></AdminRoute>} />
+          <Route path="/admin/grc" element={<AdminRoute><AdminGRC /></AdminRoute>} />
+
+          <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+          <Route path="/rewards" element={<PrivateRoute><GamePage /></PrivateRoute>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 function App() {
   React.useEffect(() => {
     // 1. Listen for account restriction (Instant Kick)
@@ -100,41 +152,7 @@ function App() {
           <CloudBackground />
           <div className="relative z-10 flex flex-col min-h-screen">
             <Navbar />
-            <main className="flex-grow w-full flex flex-col">
-              <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/book" element={<PrivateRoute><BookingPage /></PrivateRoute>} />
-                <Route path="/payment" element={<PrivateRoute><Payment /></PrivateRoute>} />
-                <Route path="/about" element={<About />} />
-                <Route path="/map" element={<ParkMap />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/verify-email" element={<VerifyEmail />} />
-                <Route path="/reset-password/:token" element={<ResetPassword />} />
-
-                {/* Admin Nested Routes */}
-                <Route path="/admin/dashboard" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-                  <Route index element={<Navigate to="overview" replace />} />
-                  <Route path="overview" element={<OverviewTab isSuperAdmin={isSuperAdmin} />} />
-                  <Route path="users" element={<UsersTab isSuperAdmin={isSuperAdmin} />} />
-                  <Route path="hardware" element={<HardwareTab isSuperAdmin={isSuperAdmin} />} />
-                  <Route path="collections" element={<CollectionsTab isSuperAdmin={isSuperAdmin} />} />
-                  <Route path="access" element={<AccessControlTab isSuperAdmin={isSuperAdmin} />} />
-                  <Route path="security" element={<SecurityTab isSuperAdmin={isSuperAdmin} />} />
-                  <Route path="system" element={<SystemTab isSuperAdmin={isSuperAdmin} />} />
-                  <Route path="sales" element={<SalesTab isSuperAdmin={isSuperAdmin} />} />
-                </Route>
-
-                <Route path="/admin/alerts" element={<AdminRoute><AdminHardwareAlerts /></AdminRoute>} />
-                <Route path="/admin/users/:userId/tickets" element={<AdminRoute><AdminUserTickets /></AdminRoute>} />
-                <Route path="/admin/telemetry" element={<AdminRoute><AdminTelemetry socket={socket} /></AdminRoute>} />
-                <Route path="/admin/grc" element={<AdminRoute><AdminGRC /></AdminRoute>} />
-
-                <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
-                <Route path="/rewards" element={<PrivateRoute><GamePage /></PrivateRoute>} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </main>
+            <AnimatedRoutes isSuperAdmin={isSuperAdmin} />
           </div>
         </div>
       </TelemetryProvider>

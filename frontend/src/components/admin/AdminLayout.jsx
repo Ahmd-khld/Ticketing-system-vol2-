@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Outlet, NavLink } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import AdminHeader from '../AdminHeader';
 import { useUI } from '../../context/UIContext';
 import { useTelemetry } from '../../context/TelemetryContext';
@@ -32,9 +33,6 @@ const AdminLayout = () => {
   const location = useLocation();
   const { showModal } = useUI();
   
-  // Early return if token is missing
-  if (!localStorage.getItem('token')) return null;
-
   const superAdminEmail = (import.meta.env.VITE_SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase();
   const currentAdminEmail = (localStorage.getItem('adminEmail') || '').toLowerCase().trim();
   const isSuperAdmin = currentAdminEmail === superAdminEmail;
@@ -114,7 +112,8 @@ const AdminLayout = () => {
     localStorage.removeItem('role');
     localStorage.removeItem('userId');
     localStorage.removeItem('adminEmail');
-    navigate('/login');
+    // Force a full page redirect to /login to ensure all state is cleared and avoid any route/animation deadlocks
+    window.location.href = '/login';
   };
 
   const navItems = [
@@ -198,22 +197,27 @@ const AdminLayout = () => {
               Admin Modules
             </h3>
             {navItems.map((item) => (
-              <NavLink
+              <motion.div
                 key={item.id}
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex items-center px-5 py-4 rounded-xl text-xs font-black uppercase tracking-widest w-full transition-all duration-300 ${
-                    isActive
-                      ? 'bg-smart-dark text-white shadow-lg transform scale-[1.02] dark:bg-smart-light dark:text-smart-dark'
-                      : 'bg-transparent text-smart-gray dark:text-gray-400 hover:bg-smart-light/10 dark:hover:bg-gray-700'
-                  }`
-                }
+                whileHover={{ x: 5 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <svg className="w-5 h-5 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon}></path>
-                </svg>
-                {item.label}
-              </NavLink>
+                <NavLink
+                  to={item.path}
+                  className={({ isActive }) =>
+                    `flex items-center px-5 py-4 rounded-xl text-xs font-black uppercase tracking-widest w-full transition-all duration-300 ${
+                      isActive
+                        ? 'bg-smart-dark text-white shadow-lg transform scale-[1.02] dark:bg-smart-light dark:text-smart-dark'
+                        : 'bg-transparent text-smart-gray dark:text-gray-400 hover:bg-smart-light/10 dark:hover:bg-gray-700'
+                    }`
+                  }
+                >
+                  <svg className="w-5 h-5 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon}></path>
+                  </svg>
+                  {item.label}
+                </NavLink>
+              </motion.div>
             ))}
           </div>
         </aside>
@@ -241,7 +245,20 @@ const AdminLayout = () => {
             ))}
           </div>
 
-          <Outlet />
+          <div className="relative min-h-[600px] w-full">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.1 }}
+                className="w-full h-full"
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </main>
       </div>
     </div>
@@ -249,3 +266,4 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
+

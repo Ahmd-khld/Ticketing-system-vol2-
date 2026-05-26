@@ -6,18 +6,28 @@ const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.warn('[Auth] Missing or malformed Authorization header');
       res.status(401);
       return next(new Error('Not authorized, missing or invalid token'));
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id || decoded._id || decoded.userId).select(
-      '-password'
-    );
+    const secret = (process.env.JWT_SECRET || '').trim();
+    
+    if (!secret) {
+      console.error('[Auth] JWT_SECRET is not defined in environment');
+      res.status(500);
+      return next(new Error('Server configuration error'));
+    }
+
+    const decoded = jwt.verify(token, secret);
+    const userId = decoded.id || decoded._id || decoded.userId;
+
+    const user = await User.findById(userId).select('-password');
 
     if (user) {
       if (user.isRestricted) {
+        console.warn(`[Auth] Access denied for restricted user: ${user.email}`);
         return res.status(403).json({
           message: user.restrictionReason || 'Your account has been restricted. Please contact support.',
           isRestricted: true,
@@ -26,12 +36,14 @@ const protect = async (req, res, next) => {
       req.user = user;
       next();
     } else {
+      console.warn(`[Auth] User not found for ID: ${userId}`);
       res.status(401);
       return next(new Error('Not authorized, user not found'));
     }
   } catch (error) {
+    console.error('[Auth] Token Verification Failed:', error.message);
     res.status(401);
-    return next(new Error('Not authorized, token failed'));
+    return next(new Error(`Not authorized, token failed: ${error.message}`));
   }
 };
 

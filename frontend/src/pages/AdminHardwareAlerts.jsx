@@ -33,9 +33,6 @@ const isTokenExpired = (token) => {
 const AdminHardwareAlerts = () => {
   const navigate = useNavigate();
 
-  // Early return if token is missing
-  if (!localStorage.getItem('token')) return null;
-
   const {
     alerts,
     setAlerts,
@@ -181,7 +178,10 @@ const AdminHardwareAlerts = () => {
         onAuditClick={onAuditClick}
         onLogout={() => {
            localStorage.removeItem('token');
-           navigate('/');
+           localStorage.removeItem('role');
+           localStorage.removeItem('userId');
+           localStorage.removeItem('adminEmail');
+           window.location.href = '/login';
         }}
       />
 
@@ -212,34 +212,39 @@ const AdminHardwareAlerts = () => {
             </div>
           </div>
           
-          <div className="flex-grow overflow-auto">
+          <div className="bg-smart-bg dark:bg-gray-900 z-20 border-b border-smart-light/10">
+            <table className="w-full text-left table-fixed">
+              <thead>
+                <tr className="text-smart-gray dark:text-gray-500 text-[10px] font-black uppercase tracking-widest">
+                  <th className="px-4 py-4 pl-6 md:pl-8 w-1/4">Date & Time</th>
+                  <th className="px-4 py-4 text-center w-[100px] md:w-[120px]">Type</th>
+                  <th className="px-4 py-4 text-left">Alert Message</th>
+                </tr>
+              </thead>
+            </table>
+          </div>
+
+          <div className="flex-grow overflow-y-auto overflow-x-hidden custom-scrollbar">
             {loading ? (
               <div className="flex justify-center items-center h-full">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-smart-light"></div>
               </div>
             ) : (
-              <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-smart-bg dark:bg-gray-900 z-10">
-                  <tr className="border-b border-smart-light/10 text-smart-gray dark:text-gray-500 text-[10px] font-black uppercase tracking-widest">
-                    <th className="px-4 py-3 pl-6 md:pl-8 whitespace-nowrap text-left w-1/4">Time</th>
-                    <th className="px-4 py-3 whitespace-nowrap text-left w-[80px] md:w-[100px]">Type</th>
-                    <th className="px-4 py-3 w-full">Message</th>
-                  </tr>
-                </thead>
+              <table className="w-full text-left table-fixed border-collapse">
                 <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
                   {filteredAlerts.map((alert) => (
                     <tr key={alert._id || alert.id} className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors">
-                      <td className="px-4 py-3 pl-6 md:pl-8 whitespace-nowrap align-top">
+                      <td className="px-4 py-3 pl-6 md:pl-8 align-top w-1/4">
                         <div className="text-xs md:text-sm font-bold text-smart-dark dark:text-gray-300">{alert.timeString || alert.time}</div>
                         <div className="text-[10px] font-bold text-smart-gray dark:text-gray-500 uppercase mt-0.5">{new Date(alert.createdAt).toLocaleDateString()}</div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap align-top">
-                        <span className={`text-[8px] md:text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-wider border inline-block w-[60px] md:w-[72px] text-center ${
-                          alert.type === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 border-yellow-200' :
-                          alert.type === 'info' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 border-blue-200' :
-                          alert.type === 'action' ? 'bg-smart-light/10 text-smart-dark dark:text-smart-glow border-smart-light/20' :
-                          alert.type === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 border-green-200' :
-                          'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 border-red-200'
+                      <td className="px-4 py-3 align-top text-center w-[100px] md:w-[120px]">
+                        <span className={`text-[8px] md:text-[9px] font-black px-2 py-1.5 rounded-md uppercase tracking-wider border inline-block w-[60px] md:w-[80px] text-center ${
+                          alert.type === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800' :
+                          alert.type === 'info' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-800' :
+                          alert.type === 'action' ? 'bg-smart-light/10 dark:bg-smart-light/20 text-smart-dark dark:text-smart-glow border-smart-light/20' :
+                          alert.type === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800' :
+                          'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800'
                         }`}>
                           {alert.type}
                         </span>
@@ -247,6 +252,9 @@ const AdminHardwareAlerts = () => {
                       <td className="px-4 py-3 text-smart-dark dark:text-gray-200 font-medium text-xs md:text-sm leading-relaxed break-words align-top">{alert.message}</td>
                     </tr>
                   ))}
+                  {filteredAlerts.length === 0 && (
+                    <tr><td colSpan="3" className="p-12 text-center text-smart-gray font-black uppercase tracking-widest text-[10px]">No diagnostic records found for this selection.</td></tr>
+                  )}
                 </tbody>
               </table>
             )}

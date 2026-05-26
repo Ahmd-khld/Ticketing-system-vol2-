@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../api';
 import { useUI } from '../../../context/UIContext';
 import WidgetErrorBoundary from '../../../components/WidgetErrorBoundary';
@@ -55,19 +56,33 @@ const SalesTab = () => {
   };
 
   return (
-    <div className="mb-10 bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 overflow-hidden animate-fade-in-up">
+    <div className="mb-10 bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 overflow-hidden relative min-h-[500px]">
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] z-30 flex justify-center items-center"
+          >
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-smart-light"></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="bg-smart-bg dark:bg-gray-900 px-8 py-6 border-b border-smart-light/10 flex justify-between items-center">
         <h2 className="text-xl font-black text-smart-dark dark:text-white flex items-center tracking-tighter uppercase italic select-none">
           <svg className="w-6 h-6 mr-3 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
           Historical Revenue Analysis
         </h2>
-        <button
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={handleExportCSV}
           className="px-6 py-2 bg-smart-light/10 hover:bg-smart-light/20 text-smart-light rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-smart-light/20"
           disabled={monthlySales.length === 0}
         >
           Export CSV
-        </button>
+        </motion.button>
       </div>
 
       <div className="bg-smart-bg/30 dark:bg-gray-900/30 px-8 py-5 border-b border-smart-light/10 flex flex-col md:flex-row gap-4 justify-between items-center">
@@ -92,9 +107,14 @@ const SalesTab = () => {
                     <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity text-center bg-smart-dark text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap z-10">
                       {sale.totalTickets} Tickets<br />{sale.revenue} EGP
                     </div>
-                    <div className="w-full max-w-[50px] bg-smart-light/20 group-hover:bg-smart-light transition-all rounded-t-xl relative border border-smart-light/30" style={{ height: `${heightPercent}%` }}>
+                    <motion.div 
+                      initial={{ height: 0 }}
+                      animate={{ height: `${heightPercent}%` }}
+                      transition={{ delay: index * 0.05, duration: 0.5, ease: "easeOut" }}
+                      className="w-full max-w-[50px] bg-smart-light/20 group-hover:bg-smart-light transition-all rounded-t-xl relative border border-smart-light/30"
+                    >
                       <div className="absolute bottom-0 w-full h-1/3 bg-gradient-to-t from-smart-light/50 to-transparent"></div>
-                    </div>
+                    </motion.div>
                     <div className="absolute -bottom-10 text-[10px] font-black text-smart-gray dark:text-gray-400 uppercase text-center w-full">
                       {sale.month}
                     </div>

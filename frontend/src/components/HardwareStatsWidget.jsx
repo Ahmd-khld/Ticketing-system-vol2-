@@ -140,45 +140,54 @@ const HardwareStatsWidget = ({ socket }) => {
               </button>
             </div>
             
-            <div className="flex-grow overflow-y-auto p-0 custom-scrollbar">
+            <div className="flex-grow flex flex-col overflow-hidden">
               {loadingLogs ? (
                 <div className="flex flex-col items-center justify-center h-64 space-y-4">
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-smart-glow"></div>
                   <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px]">Analyzing Data Packets...</span>
                 </div>
               ) : sensorLogs.length > 0 ? (
-                <table className="w-full text-left border-collapse">
-                  <thead className="sticky top-0 bg-[#1D212A] z-10 shadow-md border-y border-[#2B2F3A] text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    <tr>
-                      <th className="px-4 py-3">Timestamp</th>
-                      <th className="px-4 py-3">Severity</th>
-                      <th className="px-4 py-3">Message</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#2B2F3A] font-mono text-[11px]">
-                    {sensorLogs.map((log) => (
-                      <tr key={log._id} className="hover:bg-[#1D212A]/50 transition-colors">
-                        <td className="px-4 py-3 whitespace-nowrap text-gray-400">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className={`px-2 py-0.5 rounded-sm border font-bold uppercase tracking-tighter ${
-                            log.type === 'error' ? 'bg-[#D32D5F]/10 text-[#D32D5F] border-[#D32D5F]/30' :
-                            log.type === 'warning' ? 'bg-[#F57C00]/10 text-[#F57C00] border-[#F57C00]/30' :
-                            log.type === 'success' ? 'bg-[#009688]/10 text-[#009688] border-[#009688]/30' :
-                            log.type === 'info' ? 'bg-[#00B3E6]/10 text-[#00B3E6] border-[#00B3E6]/30' :
-                            'bg-[#9C27B0]/10 text-[#9C27B0] border-[#9C27B0]/30'
-                          }`}>
-                            {log.type}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 w-full break-words text-gray-300">
-                          {log.message}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <>
+                  <div className="bg-[#1D212A] z-20 border-b border-[#2B2F3A]">
+                    <table className="w-full text-left table-fixed">
+                      <thead>
+                        <tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          <th className="px-4 py-4 w-[180px]">Timestamp</th>
+                          <th className="px-4 py-4 w-[100px]">Severity</th>
+                          <th className="px-4 py-4">Message</th>
+                        </tr>
+                      </thead>
+                    </table>
+                  </div>
+
+                  <div className="flex-grow overflow-y-auto custom-scrollbar">
+                    <table className="w-full text-left table-fixed border-collapse">
+                      <tbody className="divide-y divide-[#2B2F3A] font-mono text-[11px]">
+                        {sensorLogs.map((log) => (
+                          <tr key={log._id} className="hover:bg-[#1D212A]/50 transition-colors">
+                            <td className="px-4 py-3 text-gray-400 w-[180px]">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3 w-[100px]">
+                              <span className={`px-2 py-0.5 rounded-sm border font-bold uppercase tracking-tighter inline-block w-[70px] text-center ${
+                                log.type === 'error' ? 'bg-[#D32D5F]/10 text-[#D32D5F] border-[#D32D5F]/30' :
+                                log.type === 'warning' ? 'bg-[#F57C00]/10 text-[#F57C00] border-[#F57C00]/30' :
+                                log.type === 'success' ? 'bg-[#009688]/10 text-[#009688] border-[#009688]/30' :
+                                log.type === 'info' ? 'bg-[#00B3E6]/10 text-[#00B3E6] border-[#00B3E6]/30' :
+                                'bg-[#9C27B0]/10 text-[#9C27B0] border-[#9C27B0]/30'
+                              }`}>
+                                {log.type}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-gray-300 overflow-hidden truncate">
+                              {log.message}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               ) : (
                 <div className="flex items-center justify-center h-64 text-gray-500 font-bold uppercase tracking-widest text-[10px]">
                   No raw logs available for this system.

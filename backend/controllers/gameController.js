@@ -35,7 +35,7 @@ const getGameStatus = async (req, res) => {
 const handleGameWin = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
-    const { score } = req.body;
+    const { score } = req.body || {};
 
     if (user.gameStats.trialsUsed >= 3) {
       return res.status(400).json({ message: 'No trials left for this month' });
@@ -77,7 +77,7 @@ const handleGameWin = async (req, res) => {
 const handleGameLose = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
-    const { score } = req.body;
+    const { score } = req.body || {};
 
     if (user.gameStats.trialsUsed >= 3) {
       return res.status(400).json({ message: 'No trials left for this month' });

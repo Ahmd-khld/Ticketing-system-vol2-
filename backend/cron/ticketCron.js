@@ -48,7 +48,7 @@ const handleExpirations = async () => {
       
       // Broadcast the status change to all connected clients in real-time
       try {
-        const { io } = require('../server');
+        const { io } = require('../app');
         if (io) {
           overdueTickets.forEach(ticket => {
             const payload = {

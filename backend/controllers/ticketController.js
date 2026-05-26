@@ -18,7 +18,7 @@ const isDateValidForBooking = (date) => {
   maxDate.setDate(maxDate.getDate() + bookingWindow);
 
   let checkDate;
-  if (typeof date === 'string' && date.includes('-')) {
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
     const [year, month, day] = date.split('-').map(Number);
     checkDate = new Date(year, month - 1, day);
   } else {
@@ -594,8 +594,8 @@ const getTicketInsights = async (req, res) => {
 
       days.push({
         date: dateStr,
-        dayName: currentDate.toLocaleDateString('en-US', { weekday: 'short' }),
-        displayDate: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        dayName: currentDate.toLocaleDateString('en-US', { weekday: 'long' }),
+        displayDate: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         count,
         crowdLevel: getCrowdLevel(count),
         isToday: currentDate.toDateString() === new Date().toDateString(),

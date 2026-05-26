@@ -17,9 +17,6 @@ const AdminHeader = ({
 }) => {
   const navigate = useNavigate();
 
-  // Safety check for logout transitions
-  if (!localStorage.getItem('token')) return null;
-
   // Automatically apply dark mode if previously selected or if system prefers dark
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme');
