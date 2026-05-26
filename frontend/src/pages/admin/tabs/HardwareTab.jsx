@@ -90,7 +90,12 @@ const HardwareTab = () => {
     connectSocket();
     fetchInitialTelemetry();
 
-    // 2. Setup socket listeners
+    // 2. Setup fallback polling (every 10 seconds)
+    const pollInterval = setInterval(() => {
+      fetchInitialTelemetry();
+    }, 10000);
+
+    // 3. Setup socket listeners
     const handleConnect = () => {
       setIsConnected(true);
       console.log('[HardwareTab] WebSocket Connected');
@@ -121,6 +126,7 @@ const HardwareTab = () => {
 
     return () => {
       clearInterval(connInterval);
+      clearInterval(pollInterval);
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
       socket.off('telemetryUpdate', handleTelemetryUpdate);
