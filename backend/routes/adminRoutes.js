@@ -33,8 +33,12 @@ const {
 } = require('../controllers/adminController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireAdmin, requireSuperAdmin } = require('../middleware/superAdminMiddleware');
+const { verifyAdminWhitelist } = require('../middleware/ipControl');
 const validateRequest = require('../middleware/validateRequest');
 const { adminSearchSchema } = require('../validators/schemas');
+
+// Apply whitelist check to all routes in this router
+router.use(verifyAdminWhitelist);
 
 router.get('/stats', requireAdmin, getAdminStats);
 router.post('/scan', requireAdmin, scanTicket);

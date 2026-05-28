@@ -56,8 +56,5 @@ const riskSchema = new mongoose.Schema(
   }
 );
 
-// Index for rapid ID lookup
-riskSchema.index({ id: 1 });
-
 const Risk = mongoose.model('Risk', riskSchema);
 module.exports = Risk;

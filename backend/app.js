@@ -22,6 +22,7 @@ const HardwareAlert = require('./models/HardwareAlert');
 
 const { protect } = require('./middleware/authMiddleware');
 const { requireSuperAdmin, requireAdmin } = require('./middleware/superAdminMiddleware');
+const { checkBannedIP, verifyAdminWhitelist } = require('./middleware/ipControl');
 
 const ticketRoutes = require('./routes/ticketRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -104,6 +105,7 @@ app.use(
 
 app.use('/api/hardware/telemetry', express.text({ type: '*/*' }));
 app.use(express.json());
+app.use(checkBannedIP);
 
 app.use((req, res, next) => {
   if (req.body) mongoSanitize.sanitize(req.body);

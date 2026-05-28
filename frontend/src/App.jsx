@@ -31,6 +31,7 @@ import AccessControlTab from './pages/admin/tabs/AccessControlTab';
 import SecurityTab from './pages/admin/tabs/SecurityTab';
 import SystemTab from './pages/admin/tabs/SystemTab';
 import SalesTab from './pages/admin/tabs/SalesTab';
+import NetworkAccessTab from './pages/admin/tabs/NetworkAccessTab';
 
 // Safe local storage utility
 const getSafeStorage = (key) => {
@@ -92,6 +93,7 @@ const AnimatedRoutes = ({ isSuperAdmin }) => {
             <Route path="hardware" element={<HardwareTab isSuperAdmin={isSuperAdmin} />} />
             <Route path="collections" element={<CollectionsTab isSuperAdmin={isSuperAdmin} />} />
             <Route path="access" element={<AccessControlTab isSuperAdmin={isSuperAdmin} />} />
+            <Route path="network-access" element={<NetworkAccessTab isSuperAdmin={isSuperAdmin} />} />
             <Route path="security" element={<SecurityTab isSuperAdmin={isSuperAdmin} />} />
             <Route path="system" element={<SystemTab isSuperAdmin={isSuperAdmin} />} />
             <Route path="sales" element={<SalesTab isSuperAdmin={isSuperAdmin} />} />

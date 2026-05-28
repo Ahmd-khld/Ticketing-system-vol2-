@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { socket } from '../socket';
 import WeatherWidget from '../components/WeatherWidget';
 import api from '../api';
+import logo from '../assets/logo.png';
 
 const pricingTiers = {
   'one-time': {
@@ -133,8 +134,13 @@ const BookingPage = () => {
           className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row w-full border border-smart-light/30 dark:border-smart-light/10"
         >
           <div className="bg-smart-dark p-6 md:p-10 text-white flex-1 flex flex-col justify-between">
-            <div>
-              <h2 className="text-2xl md:text-4xl font-extrabold mb-4 md:mb-6 text-smart-glow">Select Your Passes</h2>
+            <div className="pt-4">
+              <img 
+                src={logo} 
+                alt="Smart Park Logo" 
+                className="w-72 h-72 md:w-[400px] md:h-[400px] object-contain -mt-10 -mb-24 md:-mt-16 md:-mb-32 mx-auto md:mx-0 relative z-0 pointer-events-none" 
+              />
+              <h2 className="text-2xl md:text-4xl font-extrabold mb-4 md:mb-6 text-smart-glow relative z-10">Select Your Passes</h2>
               <p className="text-white/80 text-base md:text-lg mb-6 md:mb-8 leading-relaxed">
                 Choose the tickets that best fit your group. Our monthly subscriptions offer unlimited access to all IoT park features.
               </p>

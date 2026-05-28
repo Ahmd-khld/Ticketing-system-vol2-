@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import logo from '../assets/logo.png';
+import logo from '../assets/logo 2.png';
 
 const Navbar = () => {
   const location = useLocation();
@@ -60,7 +60,7 @@ const Navbar = () => {
           <img
             src={logo}
             alt="Smart Garden Logo"
-            className="h-24 md:h-36 w-auto object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.4)]"
+            className="h-20 md:h-28 w-auto object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.4)]"
           />
         </Link>
 
