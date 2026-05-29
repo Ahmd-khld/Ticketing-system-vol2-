@@ -76,12 +76,59 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+const isBcryptHash = (str) => /^\$2[aby]\$\d{2}\$[./0-9A-Za-z]{53}$/.test(str);
+
 userSchema.pre('save', async function () {
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || isBcryptHash(this.password)) {
     return;
   }
   const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
+});
+
+userSchema.pre('findOneAndUpdate', async function () {
+  const update = this.getUpdate();
+  const password = update.password || (update.$set ? update.$set.password : null);
+  
+  if (password && !isBcryptHash(password)) {
+    const salt = await bcrypt.genSalt(12);
+    const hashed = await bcrypt.hash(password, salt);
+    if (update.password) {
+      update.password = hashed;
+    } else {
+      update.$set.password = hashed;
+    }
+  }
+});
+
+userSchema.pre('updateMany', async function () {
+  const update = this.getUpdate();
+  const password = update.password || (update.$set ? update.$set.password : null);
+  
+  if (password && !isBcryptHash(password)) {
+    const salt = await bcrypt.genSalt(12);
+    const hashed = await bcrypt.hash(password, salt);
+    if (update.password) {
+      update.password = hashed;
+    } else {
+      update.$set.password = hashed;
+    }
+  }
+});
+
+userSchema.pre('updateOne', async function () {
+  const update = this.getUpdate();
+  const password = update.password || (update.$set ? update.$set.password : null);
+  
+  if (password && !isBcryptHash(password)) {
+    const salt = await bcrypt.genSalt(12);
+    const hashed = await bcrypt.hash(password, salt);
+    if (update.password) {
+      update.password = hashed;
+    } else {
+      update.$set.password = hashed;
+    }
+  }
 });
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
