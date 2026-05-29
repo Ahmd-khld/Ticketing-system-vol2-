@@ -90,6 +90,18 @@ const Login = () => {
     localStorage.setItem('token', data.token);
     localStorage.setItem('role', data.role || 'user');
     localStorage.setItem('userId', data._id); // CRITICAL: Required for force logout socket listener
+    
+    // Phase 3: Login Interception for Password Reset Playbook
+    if (data.requiresPasswordReset) {
+      navigate('/reset-password', { 
+        state: { 
+          message: 'Your account has been restricted. You must update your password to restore access.',
+          email: data.email || email
+        } 
+      });
+      return;
+    }
+
     if (data.role === 'admin' || data.role === 'sub-admin') {
       const storedEmail = (data.email || email).toLowerCase().trim();
       localStorage.setItem('adminEmail', storedEmail);

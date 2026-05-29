@@ -280,6 +280,7 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
         email: user.email,
         role: user.role,
         isVerified: user.isVerified,
+        requiresPasswordReset: user.requiresPasswordReset,
         token: generateToken(user._id, user.tokenVersion),
       });
     } else {
@@ -330,18 +331,38 @@ router.post('/verify-2fa', async (req, res) => {
         email: user.email,
         role: user.role,
         isVerified: user.isVerified,
+        requiresPasswordReset: user.requiresPasswordReset,
         token: generateToken(user._id, user.tokenVersion),
       });
     } else {
       user.otpAttempts = (user.otpAttempts || 0) + 1;
       
       if (user.otpAttempts >= 5) {
-        user.isRestricted = true;
-        user.restrictionReason = 'Too many failed 2FA attempts. Account locked for security.';
+        // Phase 1: Automated Detection
+        const Risk = require('../models/Risk');
+        const riskId = `RISK-2FA-${Date.now()}`;
+        
+        await Risk.create({
+          id: riskId,
+          category: 'BRUTE_FORCE',
+          description: `Account [${user.email}] exceeded 5 consecutive 2FA failures. Manual security review required.`,
+          asset: `User Account: ${user._id}`,
+          likelihood: 5,
+          impact: 5,
+          status: 'Open',
+          recommendations: [{
+            title: 'Execute Resolve',
+            body: 'Restrict account, force password reset, and terminate all active sessions.',
+            priority: 'High',
+            action: 'RESOLVE_BRUTE_FORCE',
+            params: { userId: user._id.toString() }
+          }]
+        });
+
         await user.save();
         return res.status(403).json({ 
-          message: 'Too many failed attempts. Your account has been restricted for security.',
-          isRestricted: true 
+          message: 'Security threshold exceeded. Your account has been flagged for administrative review. Please contact support.',
+          isFlagged: true 
         });
       }
 

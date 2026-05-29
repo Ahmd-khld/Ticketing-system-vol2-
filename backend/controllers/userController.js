@@ -169,6 +169,7 @@ const resetPassword = async (req, res) => {
       user.deletionDate = null;
       user.isRestricted = false;
       user.restrictionReason = '';
+      user.requiresPasswordReset = false; // Phase 3 Playbook Cleanup
       await user.save();
 
       // Delete OTP after successful reset

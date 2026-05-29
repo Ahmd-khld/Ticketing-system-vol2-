@@ -22,6 +22,7 @@ const {
   getHardwareStats,
   getAlertsBySensor,
   clearHardwareAlerts,
+  resolveRisk,
   createBackup,
   getBackups,
   downloadBackup,
@@ -67,6 +68,7 @@ router.get('/hardware-stats', protect, requireAdmin, getHardwareStats);
 router.get('/hardware-alerts', requireAdmin, validateRequest(adminSearchSchema), getHardwareAlerts);
 router.get('/hardware-alerts/:sensorName', protect, requireAdmin, getAlertsBySensor);
 router.delete('/hardware-alerts', requireSuperAdmin, clearHardwareAlerts);
+router.post('/risk-register/resolve/:riskId', requireSuperAdmin, resolveRisk);
 router.post('/unlock-scanner', requireAdmin, unlockScanner);
 router.post('/backup', requireSuperAdmin, createBackup);
 router.get('/backups', requireAdmin, getBackups);

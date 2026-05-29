@@ -54,6 +54,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    requiresPasswordReset: {
+      type: Boolean,
+      default: false,
+    },
     twoFactorExpires: {
       type: Date,
       default: null,

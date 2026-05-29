@@ -395,9 +395,9 @@ const getUsers = async (req, res) => {
       }
     } else {
       if (isSuperAdmin(req)) {
-        query.role = 'user';
+        query.role = { $nin: ['admin', 'sub-admin'] };
       } else {
-        query.$or = [{ role: 'user' }, { _id: req.user._id }];
+        query.$or = [{ role: { $nin: ['admin', 'sub-admin'] } }, { _id: req.user._id }];
       }
     }
 
@@ -635,6 +635,73 @@ const toggleRestrictUser = async (req, res) => {
       message: 'Error updating user restriction status', 
       details: error.message 
     });
+  }
+};
+
+const resolveRisk = async (req, res) => {
+  const { riskId } = req.params;
+
+  try {
+    const Risk = require('../models/Risk');
+    const risk = await Risk.findOne({ id: riskId });
+    if (!risk) return res.status(404).json({ message: 'Risk record not found' });
+
+    if (risk.status === 'Resolved') {
+      return res.status(400).json({ message: 'This risk is already resolved.' });
+    }
+
+    // Identify playbook action
+    const bruteForceRecommendation = risk.recommendations.find(r => r.action === 'RESOLVE_BRUTE_FORCE');
+    if (!bruteForceRecommendation) {
+      return res.status(400).json({ message: 'No automated resolution playbook found for this risk type.' });
+    }
+
+    const { userId } = bruteForceRecommendation.params;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'Target user not found' });
+
+    // Execute Playbook
+    // 1. Access Control: Restrict
+    user.isRestricted = true;
+    user.restrictionReason = 'Security incident: 2FA threshold exceeded and administrative reset executed.';
+    
+    // 2. Mandate Password Reset
+    user.requiresPasswordReset = true;
+
+    // 3. Invalidate current session (Increment Token Version)
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    user.otpAttempts = 0; // Reset counter for next cycle
+    await user.save();
+
+    // 4. Real-time Logout (Socket.io)
+    const io = req.app.get('io');
+    if (io) {
+      const targetedRoom = `user-${user._id.toString()}-tickets`;
+      io.to(targetedRoom).emit('force_logout', {
+        userId: user._id.toString(),
+        email: user.email.toLowerCase(),
+        message: 'Your account has been restricted for security reasons. Please contact an administrator and reset your password.',
+      });
+    }
+
+    // 5. Update Risk State
+    risk.status = 'Resolved';
+    risk.resolvedAt = new Date();
+    risk.resolvedBy = req.user.email;
+    await risk.save();
+
+    await logAdminAction(
+      req,
+      `Executed Security Playbook for Risk ${riskId}: Restricted user ${user.email} and mandated password reset.`
+    );
+
+    res.status(200).json({
+      message: `Security playbook executed successfully. User ${user.email} restricted and sessions terminated.`,
+      user: { email: user.email, isRestricted: user.isRestricted }
+    });
+  } catch (error) {
+    console.error('Resolve Risk Error:', error);
+    res.status(500).json({ message: 'Error executing security playbook' });
   }
 };
 
@@ -1760,6 +1827,7 @@ module.exports = {
   scanTicket,
   getUsers,
   toggleRestrictUser,
+  resolveRisk,
   forceLogoutAnd2FA,
   createSubAdmin,
   deleteUser,

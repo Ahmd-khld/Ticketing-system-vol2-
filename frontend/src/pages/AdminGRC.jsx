@@ -229,16 +229,24 @@ const AdminGRC = () => {
       setRemediating(riskId);
       const token = localStorage.getItem('token');
       
-      // Execute the standard GRC remediation
-      const res = await api.post('/grc/remediate', 
-        { riskId, action, params },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      let res;
+      if (action === 'RESOLVE_BRUTE_FORCE') {
+        // Execute the specialized security playbook
+        res = await api.post(`/admin/risk-register/resolve/${riskId}`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } else {
+        // Execute the standard GRC remediation
+        res = await api.post('/grc/remediate', 
+          { riskId, action, params },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
       
       // Mark as executed locally
       setExecutedRemediations(prev => new Set(prev).add(`${riskId}-${action}`));
       
-      showNotification(res.data.message || 'Risk Resolved & Account Restricted');
+      showNotification(res.data.message || 'Risk Resolved & Playbook Executed');
       fetchGRCData(false);
     } catch (err) {
       console.error('Remediation Error:', err);

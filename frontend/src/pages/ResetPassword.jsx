@@ -1,15 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
 
 const ResetPassword = () => {
-  const { token: emailParam } = useParams(); // URL path can be /reset-password/:email
+  const { token } = useParams(); // URL path can be /reset-password/:email
+  const location = useLocation();
   const navigate = useNavigate();
+  
+  const emailParam = token || location.state?.email || '';
+  const initialMessage = location.state?.message ? { type: 'error', text: location.state.message } : { type: '', text: '' };
+
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [message, setMessage] = useState({ type: '', text: '' });
+  const [message, setMessage] = useState(initialMessage);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // If no email is found, kick them back to login or forgot-password
+    if (!emailParam) {
+      navigate('/login');
+    }
+  }, [emailParam, navigate]);
 
   const handleChangeOtp = (element, index) => {
     if (isNaN(element.value)) return false;
