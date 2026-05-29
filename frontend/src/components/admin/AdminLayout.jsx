@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Outlet, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminHeader from '../AdminHeader';
+import MandatoryPasswordModal from '../MandatoryPasswordModal';
 import { useUI } from '../../context/UIContext';
 import { useTelemetry } from '../../context/TelemetryContext';
 import api from '../../api';
@@ -32,6 +33,9 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { showModal } = useUI();
+  const [showMandatoryPasswordModal, setShowMandatoryPasswordModal] = useState(
+    localStorage.getItem('requiresPasswordReset') === 'true'
+  );
   
   const superAdminEmail = (import.meta.env.VITE_SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase();
   const currentAdminEmail = (localStorage.getItem('adminEmail') || '').toLowerCase().trim();
@@ -182,6 +186,11 @@ const AdminLayout = () => {
 
   return (
     <div className="min-h-screen bg-smart-bg dark:bg-black font-sans flex flex-col transition-colors duration-300">
+      <MandatoryPasswordModal 
+        isOpen={showMandatoryPasswordModal} 
+        onSuccess={() => setShowMandatoryPasswordModal(false)} 
+      />
+
       <AdminHeader
         title="Admin Control Panel"
         subtitle={

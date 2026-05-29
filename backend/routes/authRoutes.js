@@ -6,6 +6,8 @@ const { sendEmail } = require('../utils/emailService');
 const validateRequest = require('../middleware/validateRequest');
 const { loginValidationSchema, registerValidationSchema } = require('../validators/schemas');
 const { authLimiter } = require('../middleware/rateLimiters');
+const { protect } = require('../middleware/authMiddleware');
+const bcrypt = require('bcrypt');
 
 const router = express.Router();
 
@@ -373,6 +375,53 @@ router.post('/verify-2fa', async (req, res) => {
         remainingAttempts: remaining
       });
     }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @desc    Update password mandatorily
+// @route   POST /api/auth/mandatory-password-update
+// @access  Private
+router.post('/mandatory-password-update', protect, async (req, res) => {
+  try {
+    const { password } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.requiresPasswordReset) {
+      return res.status(400).json({ message: 'Password reset is not mandatory for this account.' });
+    }
+
+    if (await user.matchPassword(password)) {
+      return res.status(400).json({ message: 'New password cannot be the same as your current password.' });
+    }
+
+    // Password Policy Regex Validation (Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special)
+    const policyRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+    if (!policyRegex.test(password)) {
+      return res.status(400).json({ message: 'Password does not meet the required security policy.' });
+    }
+
+    // Update password and clear restriction flags
+    user.password = password; // Hashing is handled by pre-save middleware in User model
+    user.requiresPasswordReset = false;
+    user.isRestricted = false;
+    user.restrictionReason = '';
+    
+    // Increment tokenVersion to invalidate old tokens
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    
+    await user.save();
+
+    // Return fresh authorized JWT
+    res.status(200).json({
+      message: 'Password updated successfully. Access restored.',
+      token: generateToken(user._id, user.tokenVersion)
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
