@@ -5,6 +5,8 @@ const {
   scanTicket,
   getUsers,
   toggleRestrictUser,
+  toggleForce2FA,
+  forceLogoutAnd2FA,
   createSubAdmin,
   deleteUser,
   resetOccupancy,
@@ -50,6 +52,7 @@ router.post('/users/:userId/tickets/:ticketId/scan', requireAdmin, scanUserTicke
 router.put('/activate-cash-ticket/:id', requireAdmin, activateCashTicket);
 router.get('/pending-cash-tickets', requireAdmin, getPendingCashTickets);
 router.patch('/users/:id/restrict', requireAdmin, toggleRestrictUser);
+router.patch('/users/:id/force-logout-2fa', requireSuperAdmin, forceLogoutAnd2FA);
 router.delete('/users/:id', requireSuperAdmin, deleteUser);
 router.post('/sub-admin', requireSuperAdmin, createSubAdmin);
 router.get('/audit-logs', requireAdmin, validateRequest(adminSearchSchema), getAuditLogs);

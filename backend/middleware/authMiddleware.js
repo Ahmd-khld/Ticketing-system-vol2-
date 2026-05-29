@@ -22,10 +22,17 @@ const protect = async (req, res, next) => {
 
     const decoded = jwt.verify(token, secret);
     const userId = decoded.id || decoded._id || decoded.userId;
+    const tokenVersion = decoded.v;
 
     const user = await User.findById(userId).select('-password');
 
     if (user) {
+      // Check if token has been invalidated via tokenVersion
+      if (typeof tokenVersion !== 'undefined' && user.tokenVersion !== tokenVersion) {
+        console.warn(`[Auth] Token invalidated for user: ${user.email} (Version mismatch)`);
+        return res.status(401).json({ message: 'Session expired. Please login again.' });
+      }
+
       if (user.isRestricted) {
         console.warn(`[Auth] Access denied for restricted user: ${user.email}`);
         return res.status(403).json({

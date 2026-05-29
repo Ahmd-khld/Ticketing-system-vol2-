@@ -115,22 +115,62 @@ const AnimatedRoutes = ({ isSuperAdmin }) => {
 
 function App() {
   React.useEffect(() => {
-    // 1. Listen for account restriction (Instant Kick)
-    const handleAccountRestricted = (data) => {
-      if (!data) return;
-      const localUserId = localStorage.getItem('userId'); 
-      if (localUserId === data.userId) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('role');
-        localStorage.removeItem('userId');
-        localStorage.removeItem('adminEmail');
-        window.location.href = `/login?restrictionReason=${encodeURIComponent(data.message)}`;
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+
+    // 1. Establish Authenticated Socket Connection
+    if (token && !socket.connected) {
+      socket.auth = { token };
+      socket.connect();
+    }
+
+    // 2. Room Management & Security Listeners
+    const onConnect = () => {
+      if (userId) {
+        socket.emit('joinUserRoom', userId);
       }
     };
 
+    const handleAccountRestricted = (data) => {
+      if (!data) return;
+      if (userId === data.userId) {
+        performLogout(data.message);
+      }
+    };
+
+    const handleForceLogout = (data) => {
+      if (!data) return;
+      const localAdminEmail = localStorage.getItem('adminEmail');
+      
+      const isIdMatch = userId && userId === data.userId;
+      const isEmailMatch = localAdminEmail && data.email && localAdminEmail.toLowerCase() === data.email.toLowerCase();
+      
+      if (isIdMatch || isEmailMatch) {
+        performLogout(data.message);
+      }
+    };
+
+    const performLogout = (message) => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('adminEmail');
+      localStorage.removeItem('twoFactorRemembered');
+      window.location.href = `/login?message=${encodeURIComponent(message)}`;
+    };
+
+    socket.on('connect', onConnect);
     socket.on('accountRestricted', handleAccountRestricted);
+    socket.on('forceLogout', handleForceLogout); // Support legacy name
+    socket.on('force_logout', handleForceLogout); // Targeted event
+    
+    if (socket.connected) onConnect();
+
     return () => {
+      socket.off('connect', onConnect);
       socket.off('accountRestricted', handleAccountRestricted);
+      socket.off('forceLogout', handleForceLogout);
+      socket.off('force_logout', handleForceLogout);
     };
   }, []);
 

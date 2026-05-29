@@ -9,9 +9,9 @@ const { authLimiter } = require('../middleware/rateLimiters');
 
 const router = express.Router();
 
-const generateToken = (id) => {
+const generateToken = (id, tokenVersion = 0) => {
   const secret = (process.env.JWT_SECRET || '').trim();
-  return jwt.sign({ id }, secret, {
+  return jwt.sign({ id, v: tokenVersion }, secret, {
     expiresIn: '30d',
   });
 };
@@ -132,7 +132,7 @@ router.post('/verify-email', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        token: generateToken(user._id),
+        token: generateToken(user._id, user.tokenVersion),
       });
     } else {
       user.otpAttempts = (user.otpAttempts || 0) + 1;
@@ -280,13 +280,80 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
         email: user.email,
         role: user.role,
         isVerified: user.isVerified,
-        token: generateToken(user._id),
+        token: generateToken(user._id, user.tokenVersion),
       });
     } else {
       res.status(401).json({ error: 'Invalid credentials' });
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// @desc    Verify 2FA using OTP
+// @route   POST /api/verify-2fa
+// @access  Public
+router.post('/verify-2fa', async (req, res) => {
+  try {
+    const { email, otp, rememberMe } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email and OTP are required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isRestricted) {
+      return res.status(403).json({ message: 'Account is restricted' });
+    }
+
+    const otpRecord = await OTP.findOne({ email, otp });
+
+    if (otpRecord) {
+      user.lastLogin = new Date();
+      user.otpAttempts = 0; // Reset attempts on success
+      if (rememberMe) {
+        // Remember for another 10 days
+        user.twoFactorExpires = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+      } else {
+        user.twoFactorExpires = null;
+      }
+      await user.save();
+
+      await OTP.deleteOne({ _id: otpRecord._id });
+
+      res.json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+        token: generateToken(user._id, user.tokenVersion),
+      });
+    } else {
+      user.otpAttempts = (user.otpAttempts || 0) + 1;
+      
+      if (user.otpAttempts >= 5) {
+        user.isRestricted = true;
+        user.restrictionReason = 'Too many failed 2FA attempts. Account locked for security.';
+        await user.save();
+        return res.status(403).json({ 
+          message: 'Too many failed attempts. Your account has been restricted for security.',
+          isRestricted: true 
+        });
+      }
+
+      await user.save();
+      const remaining = 5 - user.otpAttempts;
+      res.status(400).json({ 
+        message: `Invalid or expired 2FA code. ${remaining} attempts remaining before account restriction.`,
+        remainingAttempts: remaining
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MonkeyForm from '../components/MonkeyForm.jsx';
+import TwoFactorModal from '../components/TwoFactorModal.jsx';
 import api from '../api';
 
 const Login = () => {
@@ -13,6 +14,9 @@ const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [show2FA, setShow2FA] = useState(false);
+  const [twoFactorEmail, setTwoFactorEmail] = useState('');
+  const [isVerificationMode, setIsVerificationModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -46,27 +50,29 @@ const Login = () => {
       const data = response.data;
 
       if (!isLogin) {
-        // Registration success - redirect to verification
-        navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+        // Registration success - show verification modal
+        setTwoFactorEmail(email);
+        setIsVerificationModal(true);
+        setShow2FA(true);
+        setIsLoading(false);
         return;
       }
 
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('role', data.role || 'user');
-      localStorage.setItem('userId', data._id); // Store userId for the Instant Kick listener
-      if (data.role === 'admin' || data.role === 'sub-admin') {
-        const storedEmail = (data.email || email).toLowerCase().trim();
-        localStorage.setItem('adminEmail', storedEmail);
+      if (data.twoFactorRequired) {
+        setTwoFactorEmail(data.email);
+        setIsVerificationModal(false);
+        setShow2FA(true);
+        setIsLoading(false);
+        return;
       }
 
-      if (data.role === 'admin' || data.role === 'sub-admin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/book');
-      }
+      completeLogin(data);
     } catch (err) {
       if (err.response?.status === 401 && err.response?.data?.isVerified === false) {
-        navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+        setTwoFactorEmail(email);
+        setIsVerificationModal(true);
+        setShow2FA(true);
+        setIsLoading(false);
         return;
       }
 
@@ -77,6 +83,19 @@ const Login = () => {
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const completeLogin = (data) => {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('role', data.role || 'user');
+    localStorage.setItem('userId', data._id); // CRITICAL: Required for force logout socket listener
+    if (data.role === 'admin' || data.role === 'sub-admin') {
+      const storedEmail = (data.email || email).toLowerCase().trim();
+      localStorage.setItem('adminEmail', storedEmail);
+      navigate('/admin/dashboard');
+    } else {
+      navigate('/book');
     }
   };
 
@@ -100,6 +119,14 @@ const Login = () => {
         setIsLogin={setIsLogin}
         isLoading={isLoading}
         error={error}
+      />
+
+      <TwoFactorModal
+        isOpen={show2FA}
+        email={twoFactorEmail}
+        isEmailVerification={isVerificationMode}
+        onVerify={completeLogin}
+        onClose={() => setShow2FA(false)}
       />
     </div>
   );

@@ -42,6 +42,7 @@ const LandingPage = () => {
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.role || 'user');
+      localStorage.setItem('userId', data._id); // CRITICAL: Required for force logout socket listener
       const storedEmail = (isLogin ? email : data.email || email).toLowerCase().trim();
       localStorage.setItem('adminEmail', storedEmail);
 

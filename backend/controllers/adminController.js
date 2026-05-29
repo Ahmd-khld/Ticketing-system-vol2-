@@ -710,6 +710,53 @@ const createSubAdmin = async (req, res) => {
   }
 };
 
+const forceLogoutAnd2FA = async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'Invalid User ID format' });
+  }
+
+  try {
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (user.role !== 'admin' && user.role !== 'sub-admin') {
+      return res.status(400).json({ message: 'This operation is restricted to administrative accounts.' });
+    }
+
+    // 1. Force 2FA on next login by simulating extreme inactivity
+    user.lastLogin = new Date(0); // Set to 1970 to guarantee it triggers the 10-day inactivity 2FA
+    user.twoFactorExpires = null; // Invalidate any "Remember Me" period
+    user.otpAttempts = 0;
+    user.tokenVersion = (user.tokenVersion || 0) + 1; // Invalidate current JWT
+    await user.save();
+
+    // 2. Emit socket event specifically to the user's room for instant logout
+    const io = req.app.get('io');
+    if (io) {
+      const targetedRoom = `user-${user._id.toString()}-tickets`;
+      io.to(targetedRoom).emit('force_logout', {
+        userId: user._id.toString(),
+        email: user.email.toLowerCase(),
+        message: 'A security reset was triggered by an administrator. Your session has been terminated and 2FA is now required.',
+      });
+    }
+
+    await logAdminAction(
+      req,
+      `Triggered emergency security reset and forced logout for administrative account: ${user.email}`
+    );
+
+    res.status(200).json({
+      message: `Emergency reset successful. ${user.name}'s session has been invalidated and 2FA is now mandated.`,
+    });
+  } catch (error) {
+    console.error('Force Logout Error:', error);
+    res.status(500).json({ message: 'Error triggering forced logout' });
+  }
+};
+
 const deleteUser = async (req, res) => {
   try {
     const userCheck = await User.findById(req.params.id);
@@ -1713,6 +1760,7 @@ module.exports = {
   scanTicket,
   getUsers,
   toggleRestrictUser,
+  forceLogoutAnd2FA,
   createSubAdmin,
   deleteUser,
   resetOccupancy,

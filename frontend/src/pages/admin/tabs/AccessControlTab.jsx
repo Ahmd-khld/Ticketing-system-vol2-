@@ -113,6 +113,25 @@ const AccessControlTab = ({ isSuperAdmin }) => {
     }
   };
 
+  const handleForceLogoutAnd2FA = async (userId, adminName) => {
+    const isConfirmed = await showConfirm(
+      `This will immediately terminate ${adminName}'s session and mandate 2FA on their next login. Continue?`,
+      'Emergency Security Reset'
+    );
+    if (!isConfirmed) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      await api.patch(`/admin/users/${userId}/force-logout-2fa`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      showModal(`Session terminated for ${adminName}.`, 'Success', 'success');
+      fetchSubAdmins();
+    } catch (err) {
+      showModal(err.response?.data?.message || 'Failed to trigger reset', 'Error', 'error');
+    }
+  };
+
   const filteredSubAdmins = useMemo(() => {
     return subAdmins.filter((admin) => {
       const matchesSearch =
@@ -226,11 +245,44 @@ const AccessControlTab = ({ isSuperAdmin }) => {
                       </td>
                       <td className="px-4 py-3 pr-6 text-right space-x-2">
                         {admin.email !== superAdminEmail ? (
-                          <>
-                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => navigate(`/admin/users/${admin._id}/tickets`, { state: { userName: admin.name, fromTab: 'access' } })} className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-200 dark:border-blue-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm">View</motion.button>
-                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleRestrictUser(admin._id, admin.isRestricted)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${admin.isRestricted ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-200 dark:border-orange-800 shadow-sm'}`}>{admin.isRestricted ? 'Unrestrict' : 'Restrict'}</motion.button>
-                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleDeleteUser(admin._id)} className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 shadow-sm">Delete</motion.button>
-                          </>
+                          <div className="flex items-center justify-end gap-2">
+                            <motion.button 
+                              whileHover={{ scale: 1.05 }} 
+                              whileTap={{ scale: 0.95 }} 
+                              onClick={() => navigate(`/admin/users/${admin._id}/tickets`, { state: { userName: admin.name, fromTab: 'access' } })} 
+                              className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-200 dark:border-blue-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+                            >
+                              View
+                            </motion.button>
+
+                            <motion.button 
+                              whileHover={{ scale: 1.05 }} 
+                              whileTap={{ scale: 0.95 }} 
+                              onClick={() => handleForceLogoutAnd2FA(admin._id, admin.name)} 
+                              className="px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-600 hover:text-white border border-amber-200 dark:border-amber-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+                            >
+                              2FA
+                            </motion.button>
+
+                            <motion.button 
+                              whileHover={{ scale: 1.05 }} 
+                              whileTap={{ scale: 0.95 }} 
+                              onClick={() => handleRestrictUser(admin._id, admin.isRestricted)} 
+                              className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${admin.isRestricted ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-200 dark:border-orange-800 shadow-sm'}`}
+                            >
+                              {admin.isRestricted ? 'Unrestrict' : 'Restrict'}
+                            </motion.button>
+
+                            <motion.button 
+                              whileHover={{ scale: 1.05 }} 
+                              whileTap={{ scale: 0.95 }} 
+                              onClick={() => handleDeleteUser(admin._id)} 
+                              className="p-2.5 rounded-xl transition-all bg-red-500/10 hover:bg-red-600 hover:text-white text-red-500 border border-red-500/20 shadow-sm" 
+                              title="Delete Account"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </motion.button>
+                          </div>
                         ) : (
                           <span className="text-[10px] font-black uppercase tracking-widest text-smart-gray dark:text-gray-500 mr-2">Protected</span>
                         )}

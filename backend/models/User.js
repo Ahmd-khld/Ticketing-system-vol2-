@@ -46,6 +46,22 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    lastLogin: {
+      type: Date,
+      default: Date.now,
+    },
+    force2FA: {
+      type: Boolean,
+      default: false,
+    },
+    twoFactorExpires: {
+      type: Date,
+      default: null,
+    },
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
     role: {
       type: String,
       enum: ['user', 'admin', 'sub-admin', 'customer', 'viewer'],
