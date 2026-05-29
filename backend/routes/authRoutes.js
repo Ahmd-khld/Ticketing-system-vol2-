@@ -268,6 +268,7 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
           message: isForced2FA ? '2FA required' : '2FA required due to inactivity',
           twoFactorRequired: true,
           email: user.email,
+          role: user.role,
         });
       }
 

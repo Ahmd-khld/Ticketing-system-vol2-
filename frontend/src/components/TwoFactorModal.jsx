@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 
-const TwoFactorModal = ({ isOpen, email, onVerify, onClose, isEmailVerification = false }) => {
+const TwoFactorModal = ({ isOpen, email, role, onVerify, onClose, isEmailVerification = false }) => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -9,6 +9,8 @@ const TwoFactorModal = ({ isOpen, email, onVerify, onClose, isEmailVerification 
   const [resendMessage, setResendMessage] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const inputs = useRef([]);
+
+  const isSubAdmin = role === 'sub-admin';
 
   useEffect(() => {
     if (isOpen) {
@@ -67,7 +69,7 @@ const TwoFactorModal = ({ isOpen, email, onVerify, onClose, isEmailVerification 
 
     try {
       const endpoint = isEmailVerification ? '/verify-email' : '/verify-2fa';
-      const payload = isEmailVerification ? { email, otp: otpCode } : { email, otp: otpCode, rememberMe };
+      const payload = isEmailVerification ? { email, otp: otpCode } : { email, otp: otpCode, rememberMe: isSubAdmin ? false : rememberMe };
       const response = await api.post(endpoint, payload);
       onVerify(response.data);
     } catch (err) {
@@ -88,7 +90,7 @@ const TwoFactorModal = ({ isOpen, email, onVerify, onClose, isEmailVerification 
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-[#80C241]/10 rounded-full mb-4">
             <svg className="w-8 h-8 text-[#80C241]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 002 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
           <h2 className="text-3xl font-black text-[#0B4228] dark:text-[#f8faf8] italic mb-2">
@@ -129,7 +131,7 @@ const TwoFactorModal = ({ isOpen, email, onVerify, onClose, isEmailVerification 
             ))}
           </div>
 
-          {!isEmailVerification && (
+          {!isEmailVerification && !isSubAdmin && (
             <div className="flex items-center justify-center gap-3 mb-8 group cursor-pointer" onClick={() => setRememberMe(!rememberMe)}>
               <div className={`w-5 h-5 rounded-lg border-2 transition-all duration-300 flex items-center justify-center ${rememberMe ? 'bg-[#80C241] border-[#80C241] shadow-lg shadow-[#80C241]/40' : 'bg-[#f4fbf2] dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`}>
                 <svg className={`w-3 h-3 text-white transition-opacity duration-300 ${rememberMe ? 'opacity-100' : 'opacity-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">

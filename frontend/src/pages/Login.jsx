@@ -16,6 +16,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [show2FA, setShow2FA] = useState(false);
   const [twoFactorEmail, setTwoFactorEmail] = useState('');
+  const [userRole, setUserRole] = useState('');
   const [isVerificationMode, setIsVerificationModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -52,6 +53,7 @@ const Login = () => {
       if (!isLogin) {
         // Registration success - show verification modal
         setTwoFactorEmail(email);
+        setUserRole(data.role || 'user');
         setIsVerificationModal(true);
         setShow2FA(true);
         setIsLoading(false);
@@ -60,6 +62,7 @@ const Login = () => {
 
       if (data.twoFactorRequired) {
         setTwoFactorEmail(data.email);
+        setUserRole(data.role || 'user');
         setIsVerificationModal(false);
         setShow2FA(true);
         setIsLoading(false);
@@ -70,6 +73,9 @@ const Login = () => {
     } catch (err) {
       if (err.response?.status === 401 && err.response?.data?.isVerified === false) {
         setTwoFactorEmail(email);
+        // We don't have the role here unless the backend returns it in the 401 response
+        // But for unverified users, it's usually 'user'
+        setUserRole('user');
         setIsVerificationModal(true);
         setShow2FA(true);
         setIsLoading(false);
@@ -130,6 +136,7 @@ const Login = () => {
       <TwoFactorModal
         isOpen={show2FA}
         email={twoFactorEmail}
+        role={userRole}
         isEmailVerification={isVerificationMode}
         onVerify={completeLogin}
         onClose={() => setShow2FA(false)}
