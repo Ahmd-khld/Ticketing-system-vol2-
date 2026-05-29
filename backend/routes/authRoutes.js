@@ -116,6 +116,7 @@ router.post('/verify-email', async (req, res) => {
 
     if (otpRecord) {
       user.isVerified = true;
+      user.lastLogin = new Date(); // Record initial login upon verification
       user.otpAttempts = 0;
       user.deletionDate = null;
       user.isRestricted = false;
@@ -221,6 +222,57 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
           isVerified: false,
         });
       }
+
+      // Check for 10-day inactivity 2FA or Forced 2FA
+      const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+      const isInactive = user.lastLogin && user.lastLogin < tenDaysAgo;
+      const is2FAExpired = !user.twoFactorExpires || user.twoFactorExpires < new Date();
+      const isForced2FA = user.force2FA;
+
+      if (isForced2FA || (isInactive && is2FAExpired)) {
+        // Generate and send 2FA OTP
+        const otpCode = generateOTP();
+        await OTP.findOneAndUpdate(
+          { email: user.email },
+          { otp: otpCode, createdAt: Date.now() },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px;">
+            <h2 style="color: #0B4228; text-align: center;">Security Check: 2FA Required</h2>
+            <p>Hello ${user.name},</p>
+            <p>${isForced2FA ? 'Your account requires 2FA for every login.' : "It's been a while since your last login."} For your security, please use the following code to complete your login:</p>
+            <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0B4228;">${otpCode}</span>
+            </div>
+            <p>This code will expire in 10 minutes.</p>
+            <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+            <p style="font-size: 12px; color: #6b7280; text-align: center;">Smart Garden IoT System</p>
+          </div>
+        `;
+
+        await sendEmail({
+          to: user.email,
+          subject: 'Security Code - Smart Garden 2FA',
+          html: emailHtml,
+        });
+
+        // Reset attempts when a new 2FA is triggered to allow fresh start
+        user.otpAttempts = 0;
+        await user.save();
+
+        return res.status(200).json({
+          message: isForced2FA ? '2FA required' : '2FA required due to inactivity',
+          twoFactorRequired: true,
+          email: user.email,
+        });
+      }
+
+      // Update last login
+      user.lastLogin = new Date();
+      user.otpAttempts = 0; // Reset on successful standard login
+      await user.save();
 
       res.json({
         _id: user._id,

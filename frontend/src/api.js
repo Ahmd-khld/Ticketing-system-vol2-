@@ -27,19 +27,31 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (
-      error.response &&
-      error.response.status === 403 &&
-      (error.response.data?.message?.includes('restricted') || error.response.data?.isRestricted)
-    ) {
-      // Clear all local auth state
-      localStorage.removeItem('token');
-      localStorage.removeItem('role');
-      localStorage.removeItem('adminEmail');
-
-      // Force redirect with state
-      const message = error.response.data?.message || 'Your account has been restricted.';
-      window.location.href = `/login?restrictionReason=${encodeURIComponent(message)}`;
+    if (error.response) {
+      const { status, data } = error.response;
+      
+      // Handle Account Restriction (403)
+      if (status === 403 && (data?.message?.includes('restricted') || data?.isRestricted)) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('adminEmail');
+        localStorage.removeItem('userId');
+        const message = data?.message || 'Your account has been restricted.';
+        window.location.href = `/login?restrictionReason=${encodeURIComponent(message)}`;
+      }
+      
+      // Handle Unauthorized/Expired/Malformed Token (401)
+      if (status === 401) {
+        // Check if we are already on login or landing to avoid redirect loops
+        const path = window.location.pathname;
+        if (path !== '/login' && path !== '/' && path !== '/verify-email') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('role');
+          localStorage.removeItem('adminEmail');
+          localStorage.removeItem('userId');
+          window.location.href = '/login?message=' + encodeURIComponent('Session expired. Please login again.');
+        }
+      }
     }
     return Promise.reject(error);
   }

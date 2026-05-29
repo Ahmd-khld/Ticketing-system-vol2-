@@ -209,9 +209,16 @@ io.on('connection', (socket) => {
 
 app.use((err, req, res, next) => {
   let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  if (err.message === 'Not authorized, no session' || err.message === 'Not authorized, token failed') {
+  
+  // Robust check for authorization errors
+  if (
+    err.message.includes('Not authorized') || 
+    err.message.includes('token failed') || 
+    err.message.includes('jwt')
+  ) {
     statusCode = 401;
   }
+  
   res.status(statusCode).json({ message: err.message });
 });
 
