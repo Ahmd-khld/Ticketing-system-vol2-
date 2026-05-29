@@ -235,6 +235,11 @@ const AdminGRC = () => {
         res = await api.post(`/admin/risk-register/resolve/${riskId}`, {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
+      } else if (action === 'RESOLVE_INSIDER_THREAT') {
+        // Execute the manual Insider Threat restriction
+        res = await api.post(`/admin/risk-register/resolve-insider/${riskId}`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
       } else {
         // Execute the standard GRC remediation
         res = await api.post('/grc/remediate', 
@@ -1075,7 +1080,11 @@ const AdminGRC = () => {
                               : 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black border-emerald-500/20'
                             }`}
                           >
-                            {executedRemediations.has(`${selectedRisk.id}-${rec.action}`) ? '✓ Action Executed' : 'Execute Resolve'}
+                            {executedRemediations.has(`${selectedRisk.id}-${rec.action}`) 
+                              ? '✓ Action Executed' 
+                              : rec.action === 'RESOLVE_INSIDER_THREAT' 
+                                ? 'Restrict Admin' 
+                                : 'Execute Resolve'}
                           </button>
                         )}
                       </div>

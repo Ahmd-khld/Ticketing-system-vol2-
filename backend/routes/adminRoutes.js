@@ -4,6 +4,7 @@ const {
   getAdminStats,
   scanTicket,
   getUsers,
+  getAdmins,
   toggleRestrictUser,
   toggleForce2FA,
   forceLogoutAnd2FA,
@@ -23,6 +24,7 @@ const {
   getAlertsBySensor,
   clearHardwareAlerts,
   resolveRisk,
+  resolveInsiderThreat,
   createBackup,
   getBackups,
   downloadBackup,
@@ -48,6 +50,7 @@ router.post('/scan', requireAdmin, scanTicket);
 router.post('/reset-occupancy', requireSuperAdmin, resetOccupancy);
 router.post('/generate-mock-data', protect, requireSuperAdmin, generateMockData);
 router.get('/users', requireAdmin, validateRequest(adminSearchSchema), getUsers);
+router.get('/admins', requireAdmin, validateRequest(adminSearchSchema), getAdmins);
 router.get('/users/:userId/tickets', requireAdmin, getUserTickets);
 router.post('/users/:userId/tickets/:ticketId/scan', requireAdmin, scanUserTicket);
 router.put('/activate-cash-ticket/:id', requireAdmin, activateCashTicket);
@@ -69,6 +72,7 @@ router.get('/hardware-alerts', requireAdmin, validateRequest(adminSearchSchema),
 router.get('/hardware-alerts/:sensorName', protect, requireAdmin, getAlertsBySensor);
 router.delete('/hardware-alerts', requireSuperAdmin, clearHardwareAlerts);
 router.post('/risk-register/resolve/:riskId', requireSuperAdmin, resolveRisk);
+router.post('/risk-register/resolve-insider/:riskId', requireSuperAdmin, resolveInsiderThreat);
 router.post('/unlock-scanner', requireAdmin, unlockScanner);
 router.post('/backup', requireSuperAdmin, createBackup);
 router.get('/backups', requireAdmin, getBackups);

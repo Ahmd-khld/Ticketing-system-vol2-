@@ -77,6 +77,10 @@ const userSchema = new mongoose.Schema(
       auditLogs: { type: Boolean, default: false },
       userManagement: { type: Boolean, default: false },
     },
+    restrictedAccountsCount: {
+      type: Number,
+      default: 0,
+    },
     savedCards: [
       {
         last4Digits: String,

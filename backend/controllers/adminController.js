@@ -5,6 +5,7 @@ const AdminAuditLog = require('../models/AdminAuditLog');
 const BannedIP = require('../models/BannedIP');
 const WhitelistedIP = require('../models/WhitelistedIP');
 const PromoCode = require('../models/PromoCode');
+const Risk = require('../models/Risk');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const { spawn } = require('child_process');
@@ -384,22 +385,10 @@ const getUsers = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const { search, status, role } = req.query;
+    const { search, status } = req.query;
 
-    const query = {};
-    if (role === 'admin') {
-      if (!isSuperAdmin(req)) {
-        query.$and = [{ role: { $in: ['admin', 'sub-admin'] } }, { _id: req.user._id }];
-      } else {
-        query.role = { $in: ['admin', 'sub-admin'] };
-      }
-    } else {
-      if (isSuperAdmin(req)) {
-        query.role = { $nin: ['admin', 'sub-admin'] };
-      } else {
-        query.$or = [{ role: { $nin: ['admin', 'sub-admin'] } }, { _id: req.user._id }];
-      }
-    }
+    // Strictly fetch only accounts with the 'user' role to separate from admins
+    const query = { role: 'user' };
 
     if (search) {
       query.$or = [
@@ -427,15 +416,6 @@ const getUsers = async (req, res) => {
       User.countDocuments(query),
     ]);
 
-    if (role === 'admin') {
-       return res.status(200).json({
-        users: usersRaw,
-        totalUsers: total,
-        currentPage: page,
-        totalPages: Math.ceil(total / limit) || 1,
-      });
-    }
-
     // Efficiently fetch ticket counts for all users in the current page
     const userIds = usersRaw.map((u) => u._id);
     const ticketCounts = await Ticket.aggregate([
@@ -462,6 +442,61 @@ const getUsers = async (req, res) => {
   } catch (error) {
     console.error('Fetch Users Error:', error);
     res.status(500).json({ message: 'Error fetching users' });
+  }
+};
+
+// @desc    Get all administrative accounts (Admin, Sub-Admin)
+// @route   GET /api/admin/admins
+// @access  Private (Admin)
+const getAdmins = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const { search, status } = req.query;
+
+    const query = { role: { $in: ['admin', 'sub-admin'] } };
+
+    // Security: Non-SuperAdmins can only see their own administrative profile
+    if (!isSuperAdmin(req)) {
+      query._id = req.user._id;
+    }
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    if (status) {
+      const s = status.toLowerCase();
+      if (s === 'active') {
+        query.isRestricted = false;
+      } else if (s === 'restricted') {
+        query.isRestricted = true;
+      }
+    }
+
+    const [adminsRaw, total] = await Promise.all([
+      User.find(query)
+        .select('-password -savedCards')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      users: adminsRaw,
+      totalUsers: total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit) || 1,
+    });
+  } catch (error) {
+    console.error('Fetch Admins Error:', error);
+    res.status(500).json({ message: 'Error fetching administrative accounts' });
   }
 };
 
@@ -596,11 +631,55 @@ const toggleRestrictUser = async (req, res) => {
         .json({ message: 'Only the Super Admin can restrict sub-admins.' });
     }
 
+    const originallyRestricted = user.isRestricted;
     user.isRestricted = !user.isRestricted;
     user.restrictionReason = user.isRestricted ? (reason || 'No reason provided') : '';
     await user.save();
 
     const io = req.app.get('io');
+
+    // Insider Threat Detection Policy: Track admin restriction actions
+    if (!originallyRestricted && user.isRestricted && req.user) {
+      const admin = await User.findById(req.user._id);
+      if (admin) {
+        admin.restrictedAccountsCount = (admin.restrictedAccountsCount || 0) + 1;
+        await admin.save();
+
+        if (admin.restrictedAccountsCount > 5) {
+          const riskId = `RISK-INSIDER-${Date.now()}`;
+          
+          await Risk.findOneAndUpdate(
+            { id: riskId },
+            {
+              id: riskId,
+              category: 'INSIDER THREAT',
+              description: `Admin [${admin.email}] has restricted [${admin.restrictedAccountsCount}] users.`,
+              asset: `Admin: ${admin.email}`,
+              likelihood: 5,
+              impact: 5,
+              status: 'Open',
+              recommendations: [{
+                title: 'Revoke Administrative Access',
+                body: 'Immediately restrict this administrator account and terminate all active sessions to prevent further unauthorized actions.',
+                priority: 'Critical',
+                action: 'RESOLVE_INSIDER_THREAT',
+                params: { adminEmail: admin.email }
+              }]
+            },
+            { upsert: true, new: true }
+          );
+
+          if (io) {
+            io.emit('new_risk_detected', {
+              message: `Insider Threat Flagged: Admin ${admin.email} has restricted ${admin.restrictedAccountsCount} users.`,
+              category: 'INSIDER THREAT',
+              intensity: 25
+            });
+          }
+        }
+      }
+    }
+
     if (io) {
       io.emit('userUpdated', {
         _id: user._id.toString(),
@@ -673,6 +752,50 @@ const resolveRisk = async (req, res) => {
     user.otpAttempts = 0; // Reset counter for next cycle
     await user.save();
 
+    // Track this restriction for Insider Threat detection
+    if (req.user) {
+      const admin = await User.findById(req.user._id);
+      if (admin) {
+        admin.restrictedAccountsCount = (admin.restrictedAccountsCount || 0) + 1;
+        await admin.save();
+
+        if (admin.restrictedAccountsCount > 5) {
+          const riskId = `RISK-INSIDER-${Date.now()}`;
+          const Risk = require('../models/Risk');
+          
+          await Risk.findOneAndUpdate(
+            { id: riskId },
+            {
+              id: riskId,
+              category: 'INSIDER THREAT',
+              description: `Admin [${admin.email}] has restricted [${admin.restrictedAccountsCount}] users.`,
+              asset: `Admin: ${admin.email}`,
+              likelihood: 5,
+              impact: 5,
+              status: 'Open',
+              recommendations: [{
+                title: 'Revoke Administrative Access',
+                body: 'Immediately restrict this administrator account and terminate all active sessions to prevent further unauthorized actions.',
+                priority: 'Critical',
+                action: 'RESOLVE_INSIDER_THREAT',
+                params: { adminEmail: admin.email }
+              }]
+            },
+            { upsert: true, new: true }
+          );
+
+          const io = req.app.get('io');
+          if (io) {
+            io.emit('new_risk_detected', {
+              message: `Insider Threat Flagged: Admin ${admin.email} has restricted ${admin.restrictedAccountsCount} users.`,
+              category: 'INSIDER THREAT',
+              intensity: 25
+            });
+          }
+        }
+      }
+    }
+
     // 4. Real-time Logout (Socket.io)
     const io = req.app.get('io');
     if (io) {
@@ -702,6 +825,81 @@ const resolveRisk = async (req, res) => {
   } catch (error) {
     console.error('Resolve Risk Error:', error);
     res.status(500).json({ message: 'Error executing security playbook' });
+  }
+};
+
+const resolveInsiderThreat = async (req, res) => {
+  const { riskId } = req.params;
+
+  try {
+    const Risk = require('../models/Risk');
+    const risk = await Risk.findOne({ id: riskId });
+    if (!risk) return res.status(404).json({ message: 'Risk record not found' });
+
+    if (risk.status === 'Resolved') {
+      return res.status(400).json({ message: 'This risk is already resolved.' });
+    }
+
+    if (risk.category !== 'INSIDER THREAT') {
+      return res.status(400).json({ message: 'This endpoint is specifically for Insider Threat resolution.' });
+    }
+
+    // Extract admin email from description: "Admin [email@example.com] has restricted [X] users."
+    const emailMatch = risk.description.match(/\[(.*?)\]/);
+    if (!emailMatch || !emailMatch[1]) {
+      return res.status(400).json({ message: 'Offending admin email could not be parsed from risk description.' });
+    }
+    const adminEmail = emailMatch[1];
+
+    const offendingAdmin = await User.findOne({ email: adminEmail });
+    if (!offendingAdmin) {
+      return res.status(404).json({ message: `Offending admin [${adminEmail}] not found in database.` });
+    }
+
+    // Security Check: Even a Super Admin can't restrict themselves via this route
+    if (offendingAdmin.email === superAdminEmail) {
+      return res.status(403).json({ message: 'Critical protection error: The Super Admin account cannot be restricted.' });
+    }
+
+    // 1. Restrict Account
+    offendingAdmin.isRestricted = true;
+    offendingAdmin.restrictionReason = `Insider Threat Manual Intervention: High volume account restriction activity detected and confirmed by ${req.user.email}.`;
+    
+    // 2. Terminate Sessions
+    offendingAdmin.tokenVersion = (offendingAdmin.tokenVersion || 0) + 1;
+    await offendingAdmin.save();
+
+    // 3. Real-time Kick-out
+    const io = req.app.get('io');
+    if (io) {
+      const targetedRoom = `user-${offendingAdmin._id.toString()}-tickets`;
+      io.to(targetedRoom).emit('force_logout', {
+        userId: offendingAdmin._id.toString(),
+        email: offendingAdmin.email.toLowerCase(),
+        message: 'Your administrative access has been revoked due to an Insider Threat flag. Your session has been terminated.',
+      });
+      // Global refresh for dashboards
+      io.emit('dataRefresh');
+    }
+
+    // 4. Update Risk Status
+    risk.status = 'Resolved';
+    risk.resolvedAt = new Date();
+    risk.resolvedBy = req.user.email;
+    await risk.save();
+
+    await logAdminAction(
+      req,
+      `Resolved Insider Threat ${riskId}: Revoked administrative access for ${adminEmail}.`
+    );
+
+    res.status(200).json({
+      message: `Insider threat neutralized. Admin ${adminEmail} restricted and sessions terminated.`,
+      status: 'Resolved'
+    });
+  } catch (error) {
+    console.error('Resolve Insider Threat Error:', error);
+    res.status(500).json({ message: 'Error resolving insider threat security risk' });
   }
 };
 
@@ -1826,8 +2024,10 @@ module.exports = {
   getAdminStats,
   scanTicket,
   getUsers,
+  getAdmins,
   toggleRestrictUser,
   resolveRisk,
+  resolveInsiderThreat,
   forceLogoutAnd2FA,
   createSubAdmin,
   deleteUser,

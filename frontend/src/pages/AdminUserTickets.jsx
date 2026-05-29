@@ -110,7 +110,7 @@ const AdminUserTickets = () => {
 
   const handleScanAndExpireNavigation = (ticketId) => {
     // Navigate to the Hardware tab and pass the ticketId as a query parameter
-    navigate(`/admin/dashboard?tab=hardware&ticketId=${ticketId}`);
+    navigate(`/admin/dashboard/hardware?ticketId=${ticketId}`);
   };
 
   const filteredTickets = tickets.filter((t) => {

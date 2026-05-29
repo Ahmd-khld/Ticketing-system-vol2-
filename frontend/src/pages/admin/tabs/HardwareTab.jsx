@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../api';
@@ -37,6 +37,7 @@ const HardwareTab = () => {
   const isSuperAdmin = currentAdminEmail === superAdminEmail;
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { showModal, showConfirm } = useUI();
   const {
     alerts: masterAlertList,
@@ -51,12 +52,27 @@ const HardwareTab = () => {
   const [totalAlertPages, setTotalAlertPages] = useState(1);
   const [isLoadingAlerts, setIsLoadingAlerts] = useState(false);
 
+  const location = useLocation();
   const [manualTicketId, setManualTicketId] = useState('');
   const [scanMessage, setScanMessage] = useState(null);
   const [isLockedUI, setIsLockedUI] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const scannerRef = useRef(null);
   const scanLock = useRef(false);
+
+  useEffect(() => {
+    // Priority 1: Query Parameters (for Scan & Expire workflow)
+    const ticketIdFromQuery = searchParams.get('ticketId');
+    if (ticketIdFromQuery) {
+      setManualTicketId(ticketIdFromQuery);
+    }
+    // Priority 2: Location State (fallback)
+    else if (location.state?.prefillTicketId) {
+      setManualTicketId(location.state.prefillTicketId);
+      // Clean up the state so it doesn't persist on subsequent re-renders or navigations
+      window.history.replaceState({}, document.title);
+    }
+  }, [location, searchParams]);
 
   // Telemetry state
   const [telemetry, setTelemetry] = useState(null);

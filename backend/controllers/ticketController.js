@@ -520,7 +520,7 @@ const checkout = async (req, res) => {
           savedTickets.forEach((ticket) => {
             const roomName = `user-${req.user._id.toString()}-tickets`;
             console.log(`[Socket Debug] Checkout: Emitting TICKET_STATUS_UPDATED to room: ${roomName} for ticket: ${ticket._id}`);
-            io.to(roomName).emit('TICKET_STATUS_UPDATED', {
+            io.to(roomName).emit('ticket_state_updated', {
               ticketId: ticket._id.toString(),
               userId: req.user._id.toString(),
               status: ticket.status,
@@ -758,7 +758,7 @@ const rescheduleTicket = async (req, res) => {
     // NEW: Emit targeted update to the specific user's room for real-time refresh
     const io = req.app.get('io');
     if (io) {
-      io.to(`user-${req.user._id}-tickets`).emit('TICKET_STATUS_UPDATED', {
+      io.to(`user-${req.user._id}-tickets`).emit('ticket_state_updated', {
         ticketId: ticket._id,
         userId: req.user._id,
         status: ticket.status,

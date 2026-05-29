@@ -48,9 +48,9 @@ const RescheduleModal = ({ ticketId, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-[#0f172a]/95 z-[9999] flex items-center justify-center p-4 transition-all">
       <div 
-        className="bg-gray-900 border border-smart-light/20 w-full max-w-md rounded-[2.5rem] shadow-2xl animate-fade-in-up flex flex-col max-h-[80vh] md:max-h-[600px] overflow-hidden"
+        className="bg-slate-900 border border-smart-light/20 w-full max-w-md rounded-[2.5rem] shadow-[0_32px_64px_-15px_rgba(0,0,0,0.5)] animate-fade-in-up flex flex-col max-h-[80vh] md:max-h-[600px] overflow-hidden relative"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-8 border-b border-white/5 bg-gradient-to-r from-[#8cc63f]/10 to-transparent flex justify-between items-start shrink-0">

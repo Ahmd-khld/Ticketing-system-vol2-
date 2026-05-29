@@ -32,8 +32,8 @@ const AccessControlTab = ({ isSuperAdmin }) => {
   const fetchSubAdmins = async (page = 1) => {
     const token = localStorage.getItem('token');
     try {
-      const adminsRes = await api.get('/admin/users', {
-        params: { role: 'admin', page, limit: 10, search: searchQuery, status: filterStatus !== 'ALL' ? filterStatus : undefined },
+      const adminsRes = await api.get('/admin/admins', {
+        params: { page, limit: 10, search: searchQuery, status: filterStatus !== 'ALL' ? filterStatus : undefined },
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = adminsRes.data;

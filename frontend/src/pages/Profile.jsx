@@ -15,6 +15,7 @@ const Profile = () => {
   const [selectedQrTicket, setSelectedQrTicket] = useState(null);
   const [historyFilter, setHistoryFilter] = useState('all');
   const [reschedulingTicketId, setReschedulingTicketId] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const ticketRef = useRef(null);
 
   // Form states
@@ -90,7 +91,7 @@ const Profile = () => {
       fetchTickets();
     };
 
-    socket.on('TICKET_STATUS_UPDATED', handleTicketUpdate);
+    socket.on('ticket_state_updated', handleTicketUpdate);
     socket.on('dataRefresh', handleRefreshFallback);
 
     return () => {
@@ -227,6 +228,12 @@ const Profile = () => {
       console.error('Download failed:', error);
       showModal('Failed to generate ticket image. Please try again.', 'Download Error', 'error');
     }
+  };
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchTickets();
+    setTimeout(() => setIsRefreshing(false), 500); // Visual feedback duration
   };
 
   if (!user) {
@@ -369,9 +376,26 @@ const Profile = () => {
           {activeTab === 'history' && (
             <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-10 border border-smart-light/30 dark:border-smart-light/10 animate-fade-in-up">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <h2 className="text-3xl font-black text-smart-dark dark:text-white flex items-center italic">
-                  Purchase History
-                </h2>
+                <div className="flex items-center gap-4">
+                  <h2 className="text-3xl font-black text-smart-dark dark:text-white flex items-center italic">
+                    Purchase History
+                  </h2>
+                  <button
+                    onClick={handleManualRefresh}
+                    disabled={isRefreshing}
+                    className="p-2 rounded-full hover:bg-smart-bg dark:hover:bg-gray-700 text-smart-light transition-all disabled:opacity-50"
+                    title="Refresh Tickets"
+                  >
+                    <svg
+                      className={`w-6 h-6 ${isRefreshing ? 'animate-spin' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                </div>
                 <div className="flex bg-smart-bg dark:bg-gray-700 p-1 rounded-xl border border-smart-light/10 overflow-x-auto scrollbar-hide max-w-full">
                   {['all', 'pending', 'active', 'used', 'expired'].map((status) => (
                     <button
@@ -515,8 +539,9 @@ const Profile = () => {
                           <p className="font-mono text-xs">ID: {ticket._id.slice(-8)}</p>
                           <p>
                             {new Date(ticket.validFrom || ticket.createdAt).toLocaleDateString(undefined, {
+                              weekday: 'short',
                               year: 'numeric',
-                              month: 'long',
+                              month: 'short',
                               day: 'numeric',
                             })}
                           </p>

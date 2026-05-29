@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../api';
 import { useUI } from '../../../context/UIContext';
 import { useTelemetry } from '../../../context/TelemetryContext';
+import { socket } from '../../../socket';
 
 const SecurityTab = () => {
   const { showModal, showConfirm } = useUI();
@@ -42,7 +43,42 @@ const SecurityTab = () => {
 
   useEffect(() => {
     setUnreadAuditCount(0);
+    
+    // Connect socket if not connected
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    // Listen for live audit log updates
+    const handleAuditUpdate = (newLog) => {
+      setAuditLogs((prevLogs) => {
+        // If we're on the first page, we can prepend the new log
+        if (auditLogPage === 1) {
+          // Check if log already exists (optional safety)
+          if (prevLogs.find(log => log._id === newLog._id)) return prevLogs;
+          const updatedLogs = [newLog, ...prevLogs].slice(0, 10);
+          return updatedLogs;
+        }
+        return prevLogs;
+      });
+      setTotalAuditLogsCount((prev) => prev + 1);
+    };
+
+    socket.on('auditLogUpdate', handleAuditUpdate);
+
+    return () => {
+      socket.off('auditLogUpdate', handleAuditUpdate);
+    };
+  }, [auditLogPage]);
+
+  useEffect(() => {
+    setUnreadAuditCount(0);
   }, []);
+
+  const handleRefreshLogs = (e) => {
+    if (e) e.stopPropagation();
+    fetchAuditLogs(1);
+  };
 
   const handleClearAuditLogs = async (olderThan = null) => {
     const confirmMsg = olderThan
@@ -100,6 +136,17 @@ const SecurityTab = () => {
           <h2 className="text-xl font-black text-smart-dark dark:text-white flex items-center tracking-tighter uppercase italic select-none">
             <svg className="w-6 h-6 mr-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
             Security Audit Logs
+            <motion.button
+              whileHover={{ rotate: 90, scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handleRefreshLogs}
+              className="ml-4 p-2 bg-white/10 hover:bg-white/20 rounded-full border border-white/10 transition-colors"
+              title="Refresh Logs"
+            >
+              <svg className="w-4 h-4 text-smart-gray dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+            </motion.button>
           </h2>
           <div className="flex items-center text-smart-gray dark:text-gray-400">
             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={(e) => { e.stopPropagation(); handleClearAuditLogs(30); }} className="hidden sm:flex items-center mr-2 px-3 py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-yellow-500/20" disabled={totalAuditLogsCount === 0}>
