@@ -51,6 +51,31 @@ const SystemTab = () => {
     window.open(url, '_blank');
   };
 
+  const handleRestoreBackup = async (filename) => {
+    const isConfirmed = await showConfirm(
+      `Are you sure you want to restore this backup snapshot (${filename})? This will overwrite the current database state.`,
+      'Activate Snapshot'
+    );
+    if (!isConfirmed) return;
+
+    setIsLoading(true);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await api.post(
+        `/admin/backups/${filename}/restore`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showModal(res.data.message || 'Database successfully restored.', 'Success', 'success');
+      fetchBackups(page);
+    } catch (err) {
+      console.error('Failed to restore backup', err);
+      showModal(err.response?.data?.message || 'Restore failed', 'Error', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="mb-10 bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 overflow-hidden relative min-h-[500px]">
       <AnimatePresence>
@@ -103,14 +128,24 @@ const SystemTab = () => {
                   <td className="px-8 py-4 font-mono text-[11px] text-smart-dark dark:text-white truncate italic">{backup.filename}</td>
                   <td className="px-8 py-4 text-[11px] font-bold text-smart-gray dark:text-gray-400">{new Date(backup.createdAt).toLocaleString()}</td>
                   <td className="px-8 py-4 text-right pr-12">
-                    <motion.button 
-                      whileHover={{ x: -5 }}
-                      onClick={() => handleDownloadBackup(backup.filename)} 
-                      className="text-blue-500 hover:text-blue-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-end ml-auto"
-                    >
-                      <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                      Download Snapshot
-                    </motion.button>
+                    <div className="flex items-center justify-end space-x-4">
+                      <motion.button 
+                        whileHover={{ scale: 1.05 }}
+                        onClick={() => handleRestoreBackup(backup.filename)} 
+                        className="text-green-500 hover:text-green-600 text-[10px] font-black uppercase tracking-widest flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path></svg>
+                        Activate
+                      </motion.button>
+                      <motion.button 
+                        whileHover={{ scale: 1.05 }}
+                        onClick={() => handleDownloadBackup(backup.filename)} 
+                        className="text-blue-500 hover:text-blue-600 text-[10px] font-black uppercase tracking-widest flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Download
+                      </motion.button>
+                    </div>
                   </td>
                 </motion.tr>
               ))}

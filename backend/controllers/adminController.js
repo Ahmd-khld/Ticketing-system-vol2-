@@ -63,10 +63,10 @@ const broadcastOccupancy = async (req) => {
   });
   const maxCapacity = parseInt(process.env.DAILY_CAPACITY) || 1000;
   const capacityPercentage = Math.round((currentOccupancy / maxCapacity) * 100);
-  
+
   // Broadcast to everyone (legacy)
   io.emit('occupancyUpdate', { currentOccupancy, capacityPercentage });
-  
+
   // Broadcast specifically to admin room (new)
   io.to('admin-room').emit('occupancyUpdated', {
     currentOccupancy,
@@ -82,7 +82,7 @@ const broadcastTicketStatus = (req, ticket) => {
   if (!io) return;
 
   const ticketData = typeof ticket.toObject === 'function' ? ticket.toObject() : ticket;
-  
+
   const payload = {
     ticketId: ticket._id.toString(),
     userId: ticket.userId.toString(),
@@ -94,13 +94,13 @@ const broadcastTicketStatus = (req, ticket) => {
 
   const roomName = `user-${ticket.userId.toString()}-tickets`;
   console.log(`[Socket Debug] broadcastTicketStatus: Sending TICKET_STATUS_UPDATED to ${roomName}`);
-  
+
   // Send the specific update
   io.to(roomName).emit('TICKET_STATUS_UPDATED', payload);
-  
+
   // Fallback: Notify the client to re-fetch if they missed the specific update
   io.to(roomName).emit('dataRefresh');
-  
+
   // Global/Legacy broadcasts
   io.to(roomName).emit('ticketScanned', payload);
   io.emit('globalTicketUpdate', payload);
@@ -647,7 +647,7 @@ const toggleRestrictUser = async (req, res) => {
 
         if (admin.restrictedAccountsCount > 5) {
           const riskId = `RISK-INSIDER-${Date.now()}`;
-          
+
           await Risk.findOneAndUpdate(
             { id: riskId },
             {
@@ -710,9 +710,9 @@ const toggleRestrictUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Toggle Restrict User Fatal Error:', error);
-    res.status(500).json({ 
-      message: 'Error updating user restriction status', 
-      details: error.message 
+    res.status(500).json({
+      message: 'Error updating user restriction status',
+      details: error.message
     });
   }
 };
@@ -743,7 +743,7 @@ const resolveRisk = async (req, res) => {
     // 1. Access Control: Restrict
     user.isRestricted = true;
     user.restrictionReason = 'Security incident: 2FA threshold exceeded and administrative reset executed.';
-    
+
     // 2. Mandate Password Reset
     user.requiresPasswordReset = true;
 
@@ -762,7 +762,7 @@ const resolveRisk = async (req, res) => {
         if (admin.restrictedAccountsCount > 5) {
           const riskId = `RISK-INSIDER-${Date.now()}`;
           const Risk = require('../models/Risk');
-          
+
           await Risk.findOneAndUpdate(
             { id: riskId },
             {
@@ -864,7 +864,7 @@ const resolveInsiderThreat = async (req, res) => {
     // 1. Restrict Account
     offendingAdmin.isRestricted = true;
     offendingAdmin.restrictionReason = `Insider Threat Manual Intervention: High volume account restriction activity detected and confirmed by ${req.user.email}.`;
-    
+
     // 2. Terminate Sessions
     offendingAdmin.tokenVersion = (offendingAdmin.tokenVersion || 0) + 1;
     await offendingAdmin.save();
@@ -909,7 +909,7 @@ const createSubAdmin = async (req, res) => {
 
     // Strict validation to reject null, undefined, or empty strings
     if (!name || !email || !password || !ipAddress ||
-        name.trim() === '' || email.trim() === '' || password.trim() === '' || ipAddress.trim() === '') {
+      name.trim() === '' || email.trim() === '' || password.trim() === '' || ipAddress.trim() === '') {
       return res
         .status(400)
         .json({ message: 'Name, email, password, and bound IP Address are required and cannot be empty' });
@@ -1469,6 +1469,35 @@ const createBackup = (req, res) => {
   const archivePath = path.join(backupDir, `smart-park-manual-${timestamp}.gzip`);
   const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/smart-park';
 
+  const runJSBackup = async () => {
+    try {
+      const zlib = require('zlib');
+      const models = mongoose.modelNames();
+      const backupData = {};
+      
+      for (const modelName of models) {
+        const model = mongoose.model(modelName);
+        const docs = await model.find({}).lean();
+        backupData[modelName] = docs;
+      }
+      
+      const jsonString = JSON.stringify(backupData, null, 2);
+      const gzipBuffer = zlib.gzipSync(jsonString);
+      fs.writeFileSync(archivePath, gzipBuffer);
+      
+      await logAdminAction(
+        req,
+        `Created manual database backup (JS Fallback): smart-park-manual-${timestamp}.gzip`
+      );
+      res.status(200).json({ message: 'Database backed up successfully (using JS fallback)!' });
+    } catch (jsErr) {
+      console.error('JS Backup Fallback failed:', jsErr);
+      res.status(500).json({ message: 'Backup failed to complete.' });
+    }
+  };
+
+  let hasResponded = false;
+
   // Use spawn instead of exec to prevent command injection
   const child = spawn('mongodump', [
     `--uri=${mongoUri}`,
@@ -1482,16 +1511,14 @@ const createBackup = (req, res) => {
   });
 
   child.on('close', async (code) => {
+    if (hasResponded) return;
     if (code !== 0) {
-      console.error(`Manual backup failed with code ${code}: ${stderrData}`);
-
-      let errorMessage = 'Backup failed to complete.';
-      if (stderrData.includes('not recognized') || stderrData.includes('ENOENT')) {
-        errorMessage = 'The mongodump tool is not installed or not in your system PATH.';
-      }
-      return res.status(500).json({ message: errorMessage });
+      console.warn(`mongodump failed with code ${code}. Trying JS backup fallback...`);
+      hasResponded = true;
+      return runJSBackup();
     }
 
+    hasResponded = true;
     await logAdminAction(
       req,
       `Created manual database backup: smart-park-manual-${timestamp}.gzip`
@@ -1500,8 +1527,10 @@ const createBackup = (req, res) => {
   });
 
   child.on('error', (err) => {
-    console.error('Failed to start backup process:', err);
-    res.status(500).json({ message: 'Failed to initiate backup process.' });
+    if (hasResponded) return;
+    console.warn('mongodump failed to start. Trying JS backup fallback...', err.message);
+    hasResponded = true;
+    runJSBackup();
   });
 };
 
@@ -1592,6 +1621,197 @@ const deleteBackup = async (req, res) => {
   }
 };
 
+const restoreBackup = async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    if (
+      !filename ||
+      !filename.endsWith('.gzip') ||
+      filename.includes('/') ||
+      filename.includes('\\')
+    ) {
+      return res.status(400).json({ message: 'Invalid or unauthorized filename' });
+    }
+    const backupDir = path.join(__dirname, '../backups');
+    const filePath = path.join(backupDir, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'Backup file not found' });
+    }
+
+    const zlib = require('zlib');
+    const fileBuffer = fs.readFileSync(filePath);
+    let decompressed;
+    try {
+      decompressed = zlib.gunzipSync(fileBuffer);
+    } catch (gzipErr) {
+      return res.status(400).json({ message: 'Failed to decompress backup file' });
+    }
+
+    let backupData;
+    let isJson = true;
+    try {
+      backupData = JSON.parse(decompressed.toString('utf8'));
+    } catch (jsonErr) {
+      isJson = false;
+    }
+
+    const ensureAccessAfterRestore = async () => {
+      // Re-run initAdmin logic to make sure the superadmin exists
+      try {
+        const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase();
+        const adminExists = await User.findOne({ email: superAdminEmail });
+        if (!adminExists) {
+          const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
+          await User.create({
+            name: 'System Administrator',
+            email: superAdminEmail,
+            phone: 'N/A',
+            password: adminPassword,
+            age: 30,
+            role: 'admin',
+            isVerified: true,
+            hasDisability: false,
+          });
+          console.log('Post-restore: Admin user verified/created');
+        }
+      } catch (error) {
+        console.error('Post-restore: Failed to initialize admin account:', error);
+      }
+
+      // Re-run initWhitelist to ensure localhost loopbacks are whitelisted
+      try {
+        const defaultIPs = [
+          { ipAddress: '127.0.0.1', description: 'Localhost IPv4' },
+          { ipAddress: '::1', description: 'Localhost IPv6' },
+          { ipAddress: '::ffff:127.0.0.1', description: 'Localhost IPv4 mapped IPv6' }
+        ];
+        for (const ip of defaultIPs) {
+          const exists = await WhitelistedIP.findOne({ ipAddress: ip.ipAddress });
+          if (!exists) {
+            await WhitelistedIP.create(ip);
+            console.log(`Post-restore: Whitelisted local IP: ${ip.ipAddress}`);
+          }
+        }
+      } catch (error) {
+        console.error('Post-restore: Failed to initialize Whitelisted IPs:', error);
+      }
+
+      // Proactively whitelist the current requesting administrator's IP address
+      try {
+        const clientIp = req.ip || req.connection.remoteAddress;
+        if (clientIp) {
+          const exists = await WhitelistedIP.findOne({ ipAddress: clientIp });
+          if (!exists) {
+            await WhitelistedIP.create({
+              ipAddress: clientIp,
+              description: `Restoring Administrator Session IP (${req.user?.email || 'Unknown'})`
+            });
+            console.log(`Post-restore: Whitelisted restoring admin IP: ${clientIp}`);
+          }
+        }
+      } catch (error) {
+        console.error('Post-restore: Failed to auto-whitelist client IP:', error);
+      }
+    };
+
+    if (isJson) {
+      // Ensure all models are loaded
+      const modelsToLoad = [
+        'AdminAuditLog',
+        'Backup',
+        'BannedIP',
+        'ComplianceControl',
+        'HardwareAlert',
+        'OTP',
+        'PromoCode',
+        'Risk',
+        'Telemetry',
+        'Ticket',
+        'User',
+        'WhitelistedIP'
+      ];
+      modelsToLoad.forEach(m => {
+        try {
+          require(`../models/${m}`);
+        } catch (e) {}
+      });
+
+      // Loop through Mongoose models in backupData and replace current records
+      for (const modelName of Object.keys(backupData)) {
+        try {
+          const Model = mongoose.model(modelName);
+          await Model.deleteMany({});
+          const docs = backupData[modelName];
+          if (docs && docs.length > 0) {
+            await Model.insertMany(docs);
+          }
+        } catch (modelErr) {
+          console.error(`Failed to restore model ${modelName}:`, modelErr);
+        }
+      }
+
+      // Ensure access
+      await ensureAccessAfterRestore();
+
+      await logAdminAction(
+        req,
+        `Restored database from backup (JS Fallback): ${filename}`
+      );
+
+      // Emit dataRefresh via socket
+      const io = req.app.get('io');
+      if (io) io.emit('dataRefresh');
+
+      return res.status(200).json({ message: 'Database successfully restored (using JS Fallback)!' });
+    } else {
+      // Run mongorestore as binary fallback
+      const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/smart-park';
+      const child = spawn('mongorestore', [
+        `--uri=${mongoUri}`,
+        `--archive=${filePath}`,
+        '--gzip',
+        '--drop',
+      ]);
+
+      let stderrData = '';
+      child.stderr.on('data', (data) => {
+        stderrData += data.toString();
+      });
+
+      child.on('close', async (code) => {
+        if (code !== 0) {
+          console.error(`mongorestore failed with code ${code}:`, stderrData);
+          return res.status(500).json({ message: `Restore failed: mongorestore exited with code ${code}` });
+        }
+
+        // Ensure access
+        await ensureAccessAfterRestore();
+
+        await logAdminAction(
+          req,
+          `Restored database from backup: ${filename}`
+        );
+
+        // Emit dataRefresh via socket
+        const io = req.app.get('io');
+        if (io) io.emit('dataRefresh');
+
+        return res.status(200).json({ message: 'Database successfully restored!' });
+      });
+
+      child.on('error', (err) => {
+        console.error('mongorestore failed to start:', err.message);
+        return res.status(500).json({ message: `Restore failed to start: ${err.message}` });
+      });
+    }
+  } catch (error) {
+    console.error('Restore Backup Error:', error);
+    res.status(500).json({ message: 'Error restoring backup' });
+  }
+};
+
+
 // @desc    Generate comprehensive mock data for the system
 // @route   POST /api/admin/generate-mock-data
 // @access  Private (Super Admin)
@@ -1599,7 +1819,7 @@ const generateMockData = async (req, res) => {
   try {
     // 0. PARAMETERIZED SCALE CONFIGURATION
     const dailyCapacity = parseInt(process.env.DAILY_CAPACITY) || 1000;
-    
+
     const SCALE = {
       multiplier: 1.0,           // Adjust this to scale everything (e.g., 2.0 doubles volume)
       baseUserCount: Math.floor(dailyCapacity * 0.4), // Scale users relative to capacity
@@ -1718,15 +1938,15 @@ const generateMockData = async (req, res) => {
     // Task B: Current Week Cluster (High Volume)
     for (let d = 0; d < 7; d++) {
       const ticketsInDay = Math.floor(SCALE.ticketsPerDayWeek * SCALE.multiplier);
-      
+
       for (let i = 0; i < ticketsInDay; i++) {
         const user = regularUsers[Math.floor(Math.random() * regularUsers.length)];
         const type = ticketTypes[Math.floor(Math.random() * ticketTypes.length)];
-        
+
         const validFrom = new Date();
         validFrom.setDate(validFrom.getDate() + d);
         validFrom.setHours(0, 0, 0, 0);
-        
+
         const validUntil = new Date(validFrom);
         validUntil.setHours(23, 59, 59, 999);
 
@@ -1735,7 +1955,7 @@ const generateMockData = async (req, res) => {
         if (d === 0) {
           // Today: Apply high occupancy rate to simulate "busy" dashboard
           if (Math.random() < SCALE.occupancyRate) {
-            currentStatus = 'USED'; 
+            currentStatus = 'USED';
           }
         } else {
           // Future: Some may already be cancelled or used (if simulated scan history existed)
@@ -1878,7 +2098,7 @@ const activateCashTicket = async (req, res) => {
 
     ticket.paymentStatus = 'PAID';
     ticket.status = 'ACTIVE';
-    
+
     // Explicitly save before response or emissions
     await ticket.save();
 
@@ -1890,7 +2110,7 @@ const activateCashTicket = async (req, res) => {
     if (io) {
       io.to('admin-room').emit('cashTicketCollected', ticket._id);
       io.to('admin-room').emit('dashboardStatsUpdated');
-      
+
       // Global broadcast for public availability window
       io.emit('crowdDataUpdated');
     }
@@ -1912,7 +2132,7 @@ const getPendingCashTickets = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const query = { paymentMethod: 'CASH' };
-    
+
     if (status === 'PAID') {
       query.paymentStatus = 'PAID';
     } else {
@@ -2049,6 +2269,7 @@ module.exports = {
   getBackups,
   downloadBackup,
   deleteBackup,
+  restoreBackup,
   getUserTickets,
   scanUserTicket,
   activateCashTicket,

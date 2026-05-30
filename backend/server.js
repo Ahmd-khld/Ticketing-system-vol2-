@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { server, app, io } = require('./app');
 const User = require('./models/User');
+const WhitelistedIP = require('./models/WhitelistedIP');
 const { initTicketCron } = require('./cron/ticketCron');
 const grcService = require('./utils/grcService');
 
@@ -11,6 +12,7 @@ mongoose
   .then(() => {
     console.log('MongoDB Connected');
     initAdmin();
+    initWhitelist();
     initTicketCron();
     grcService.setIO(io);
   })
@@ -36,6 +38,25 @@ const initAdmin = async () => {
     }
   } catch (error) {
     console.error('Failed to initialize admin account:', error);
+  }
+};
+
+const initWhitelist = async () => {
+  try {
+    const defaultIPs = [
+      { ipAddress: '127.0.0.1', description: 'Localhost IPv4' },
+      { ipAddress: '::1', description: 'Localhost IPv6' },
+      { ipAddress: '::ffff:127.0.0.1', description: 'Localhost IPv4 mapped IPv6' }
+    ];
+    for (const ip of defaultIPs) {
+      const exists = await WhitelistedIP.findOne({ ipAddress: ip.ipAddress });
+      if (!exists) {
+        await WhitelistedIP.create(ip);
+        console.log(`Whitelisted local IP: ${ip.ipAddress}`);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to initialize Whitelisted IPs:', error);
   }
 };
 
