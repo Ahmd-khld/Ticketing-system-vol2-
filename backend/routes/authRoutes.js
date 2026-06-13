@@ -231,7 +231,11 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
       const is2FAExpired = !user.twoFactorExpires || user.twoFactorExpires < new Date();
       const isForced2FA = user.force2FA;
 
-      if (isForced2FA || (isInactive && is2FAExpired)) {
+      // Superadmin exemption for 2FA
+      const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase().trim();
+      const isSuperAdmin = user.email.toLowerCase().trim() === superAdminEmail;
+
+      if (!isSuperAdmin && (isForced2FA || (isInactive && is2FAExpired))) {
         // Generate and send 2FA OTP
         const otpCode = generateOTP();
         await OTP.findOneAndUpdate(

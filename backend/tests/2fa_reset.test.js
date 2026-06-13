@@ -66,7 +66,7 @@ describe('2FA Logic Verification', () => {
       .set('Authorization', `Bearer ${adminToken}`);
     
     expect(resetRes.statusCode).toEqual(200);
-    expect(resetRes.body.message).toContain('Administrative reset successful');
+    expect(resetRes.body.message).toContain('Emergency reset successful');
 
     // 2. Attempt to login as the affected Sub-Admin
     const loginRes = await request(app)
@@ -85,5 +85,27 @@ describe('2FA Logic Verification', () => {
     const otpDoc = await OTP.findOne({ email: 'subadmin@example.com' });
     expect(otpDoc).not.toBeNull();
     expect(otpDoc.otp).toMatch(/^\d{6}$/);
+  });
+
+  it('should NOT mandate 2FA for Super Admin even if forced or inactive', async () => {
+    // 1. Manually set force2FA and old lastLogin for superadmin
+    await User.findOneAndUpdate(
+      { email: superAdminEmail },
+      { force2FA: true, lastLogin: new Date(0), twoFactorExpires: new Date(0) }
+    );
+
+    // 2. Attempt to login as Super Admin
+    const loginRes = await request(app)
+      .post('/api/login')
+      .send({
+        email: superAdminEmail,
+        password: 'password123'
+      });
+    
+    // Should return 200 with token, not 2FA requirement
+    expect(loginRes.statusCode).toEqual(200);
+    expect(loginRes.body).toHaveProperty('token');
+    expect(loginRes.body).not.toHaveProperty('twoFactorRequired');
+    expect(loginRes.body.email).toEqual(superAdminEmail);
   });
 });
