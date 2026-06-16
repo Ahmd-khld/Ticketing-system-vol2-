@@ -13,9 +13,6 @@ import AdminGRC from './pages/AdminGRC';
 import Profile from './pages/Profile';
 import ParkMap from './pages/ParkMap';
 import ResetPassword from './pages/ResetPassword';
-import Login from './pages/Login';
-import ForgotPassword from './pages/ForgotPassword';
-import VerifyEmail from './pages/VerifyEmail';
 import GamePage from './pages/GamePage';
 import CloudBackground from './components/CloudBackground';
 import { socket } from './socket';
@@ -48,7 +45,7 @@ const AdminRoute = ({ children }) => {
   const token = getSafeStorage('token');
   const role = getSafeStorage('role');
   
-  if (!token) return <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/" replace />;
   if (role !== 'admin' && role !== 'sub-admin') return <Navigate to="/" replace />;
   
   return children;
@@ -57,7 +54,7 @@ const AdminRoute = ({ children }) => {
 // User Protection Component
 const PrivateRoute = ({ children }) => {
   const token = getSafeStorage('token');
-  if (!token) return <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/" replace />;
   return children;
 };
 
@@ -80,9 +77,9 @@ const AnimatedRoutes = ({ isSuperAdmin }) => {
           <Route path="/payment" element={<PrivateRoute><Payment /></PrivateRoute>} />
           <Route path="/about" element={<About />} />
           <Route path="/map" element={<ParkMap />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/forgot-password" element={<Navigate to="/?action=forgot" replace />} />
+          <Route path="/verify-email" element={<Navigate to="/?action=verify" replace />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* Admin Nested Routes */}
@@ -156,7 +153,7 @@ function App() {
       localStorage.removeItem('userId');
       localStorage.removeItem('adminEmail');
       localStorage.removeItem('twoFactorRemembered');
-      window.location.href = `/login?message=${encodeURIComponent(message)}`;
+      window.location.href = `/?message=${encodeURIComponent(message)}`;
     };
 
     socket.on('connect', onConnect);

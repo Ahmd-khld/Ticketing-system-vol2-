@@ -6,6 +6,10 @@ const {
   deleteSavedCard,
   forgotPassword,
   resetPassword,
+  requestAccountDeletion,
+  confirmAccountDeletion,
+  cancelAccountDeletion,
+  restoreAccount,
 } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -15,5 +19,10 @@ router.delete('/profile/cards/:cardId', protect, deleteSavedCard);
 
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+
+router.post('/request-deletion', protect, requestAccountDeletion);
+router.post('/confirm-deletion', protect, confirmAccountDeletion);
+router.post('/cancel-deletion', protect, cancelAccountDeletion);
+router.post('/restore-account', restoreAccount);
 
 module.exports = router;

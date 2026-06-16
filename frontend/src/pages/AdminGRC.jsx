@@ -342,7 +342,7 @@ const AdminGRC = () => {
     localStorage.removeItem('role');
     localStorage.removeItem('userId');
     localStorage.removeItem('adminEmail');
-    window.location.href = '/login';
+    window.location.href = '/';
   };
 
   if (loading && !data) {

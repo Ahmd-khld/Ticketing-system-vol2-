@@ -25,6 +25,13 @@ const Profile = () => {
   const [hasDisability, setHasDisability] = useState(false);
   const [message, setMessage] = useState('');
 
+  // Deletion states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteOtp, setDeleteOtp] = useState(['', '', '', '', '', '']);
+  const [deleteStep, setDeleteStep] = useState(1); // 1: Password, 2: OTP
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const navigate = useNavigate();
 
   const fetchTickets = useCallback(async () => {
@@ -236,6 +243,85 @@ const Profile = () => {
     setTimeout(() => setIsRefreshing(false), 500); // Visual feedback duration
   };
 
+  const handleRequestDeletion = async (e) => {
+    e.preventDefault();
+    setIsDeleting(true);
+    const token = localStorage.getItem('token');
+    try {
+      await api.post('/users/request-deletion', { password: deletePassword }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDeleteStep(2);
+    } catch (error) {
+      showModal(error.response?.data?.message || 'Verification failed', 'Error', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleConfirmDeletion = async (e) => {
+    e.preventDefault();
+    setIsDeleting(true);
+    const token = localStorage.getItem('token');
+    try {
+      const otpCode = deleteOtp.join('');
+      const response = await api.post('/users/confirm-deletion', 
+        { password: deletePassword, otp: otpCode }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setUser(prev => ({ ...prev, deletionDate: response.data.deletionDate }));
+      setShowDeleteModal(false);
+      setDeletePassword('');
+      setDeleteOtp(['', '', '', '', '', '']);
+      setDeleteStep(1);
+      
+      showModal('Account scheduled for deletion. You have 7 days to undo this.', 'Scheduled', 'success');
+      
+      // Force logout and redirect to landing page
+      setTimeout(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('adminEmail');
+        window.location.href = '/?message=' + encodeURIComponent('Account scheduled for deletion. You have been logged out.');
+      }, 2000);
+    } catch (error) {
+      showModal(error.response?.data?.message || 'Deletion failed', 'Error', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDeletion = async () => {
+    const isConfirmed = await showConfirm(
+      'Are you sure you want to keep your account?',
+      'Cancel Deletion'
+    );
+    if (!isConfirmed) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      await api.post('/users/cancel-deletion', {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUser(prev => ({ ...prev, deletionDate: null }));
+      showModal('Account deletion cancelled. Welcome back!', 'Success', 'success');
+    } catch (error) {
+      showModal('Failed to cancel deletion', 'Error', 'error');
+    }
+  };
+
+  const handleOtpChange = (element, index) => {
+    if (isNaN(element.value)) return false;
+    const newOtp = [...deleteOtp];
+    newOtp[index] = element.value;
+    setDeleteOtp(newOtp);
+    if (element.nextSibling && element.value !== '') {
+      element.nextSibling.focus();
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-smart-bg dark:bg-black flex items-center justify-center transition-colors">
@@ -288,12 +374,37 @@ const Profile = () => {
 
         {/* Main Content Area */}
         <div className="w-full md:w-3/4">
+          {user.deletionDate && (
+            <div className="mb-6 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 animate-pulse">
+              <div className="flex items-center gap-4 text-center md:text-left">
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-800 rounded-full flex items-center justify-center text-red-600 dark:text-red-400">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-red-800 dark:text-red-200 uppercase italic">Account Scheduled for Deletion</h3>
+                  <p className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-widest">
+                    Permanent removal on: {new Date(user.deletionDate).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={handleCancelDeletion}
+                className="px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-xs uppercase tracking-widest transition-all shadow-lg hover:shadow-red-900/20"
+              >
+                Undo Deletion
+              </button>
+            </div>
+          )}
+
           {/* INFO TAB */}
           {activeTab === 'info' && (
-            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 md:p-10 border border-smart-light/30 dark:border-smart-light/10 animate-fade-in-up">
-              <h2 className="text-2xl md:text-3xl font-black text-smart-dark dark:text-white mb-6 md:mb-8 flex items-center italic">
-                Personal Information
-              </h2>
+            <div className="space-y-6 md:space-y-10">
+              <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 md:p-10 border border-smart-light/30 dark:border-smart-light/10 animate-fade-in-up">
+                <h2 className="text-2xl md:text-3xl font-black text-smart-dark dark:text-white mb-6 md:mb-8 flex items-center italic">
+                  Personal Information
+                </h2>
 
               {message && (
                 <div
@@ -369,7 +480,24 @@ const Profile = () => {
                   Save Changes
                 </button>
               </form>
+
+              {/* Luxury Account Closure Trigger */}
+              {!user.deletionDate && (
+                <div className="mt-24 pt-12 border-t border-gray-50 dark:border-gray-800/30 flex justify-center">
+                  <button
+                    onClick={() => setShowDeleteModal(true)}
+                    className="group relative px-12 py-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-red-500/30 transition-all duration-500 shadow-sm hover:shadow-xl active:scale-95 flex items-center gap-4 overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-red-500/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+                    <div className="w-2 h-2 rounded-full bg-gray-200 dark:bg-gray-700 group-hover:bg-red-500 transition-colors duration-500"></div>
+                    <span className="relative text-[10px] font-black uppercase tracking-[0.4em] text-gray-400 group-hover:text-red-500 transition-colors duration-500 italic">
+                      Close Account
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
+          </div>
           )}
 
           {/* HISTORY TAB */}
@@ -738,6 +866,94 @@ const Profile = () => {
                   Close Ticket
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Account Deletion Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-xl p-6 animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden border border-red-500/20 transform transition-all animate-scale-up">
+            <div className="bg-red-600 p-8 text-center relative">
+              <button 
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteStep(1);
+                  setDeletePassword('');
+                }}
+                className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white/20">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">
+                {deleteStep === 1 ? 'Verify Identity' : 'Enter 2FA Code'}
+              </h2>
+              <p className="text-white/70 text-xs font-bold uppercase tracking-widest mt-1">
+                {deleteStep === 1 ? 'Enter your password to continue' : `Code sent to ${user.email}`}
+              </p>
+            </div>
+
+            <div className="p-10">
+              {deleteStep === 1 ? (
+                <form onSubmit={handleRequestDeletion} className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-black text-smart-dark dark:text-white mb-3 uppercase tracking-widest">
+                      Current Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      className="w-full px-6 py-4 rounded-2xl border-2 border-red-100 dark:border-gray-700 bg-smart-bg dark:bg-gray-700 text-smart-dark dark:text-white focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition font-medium"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isDeleting}
+                    className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-2xl shadow-xl transition-all hover:-translate-y-1 uppercase tracking-widest text-sm disabled:opacity-50"
+                  >
+                    {isDeleting ? 'Verifying...' : 'Request Deletion'}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleConfirmDeletion} className="space-y-8">
+                  <div className="flex justify-between gap-2">
+                    {deleteOtp.map((data, index) => (
+                      <input
+                        key={index}
+                        type="text"
+                        maxLength="1"
+                        required
+                        className="w-11 h-12 border-2 border-red-500/30 rounded-xl text-center text-xl font-black bg-red-50/30 dark:bg-gray-700 text-red-600 dark:text-white focus:border-red-500 outline-none transition-all"
+                        value={data}
+                        onChange={(e) => handleOtpChange(e.target, index)}
+                        onFocus={(e) => e.target.select()}
+                      />
+                    ))}
+                  </div>
+                  <div className="space-y-4">
+                    <button
+                      type="submit"
+                      disabled={isDeleting}
+                      className="w-full py-5 bg-black text-white font-black rounded-2xl shadow-2xl transition-all hover:bg-red-600 uppercase tracking-widest text-xs disabled:opacity-50"
+                    >
+                      {isDeleting ? 'Confirming...' : 'Confirm Permanent Deletion'}
+                    </button>
+                    <p className="text-[10px] text-center text-gray-500 font-bold uppercase leading-relaxed">
+                      By confirming, your account will be marked for deletion. You will have exactly 7 days to undo this from your profile.
+                    </p>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>

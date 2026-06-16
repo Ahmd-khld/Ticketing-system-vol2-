@@ -178,14 +178,19 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    if (user.isRestricted || user.deletionDate) {
-      const reason = user.deletionDate
-        ? 'Account locked and scheduled for deletion due to failed verification.'
-        : user.restrictionReason || 'Your account has been restricted. Please contact support.';
+    if (user.isRestricted) {
       return res.status(403).json({
-        message: reason,
+        message: user.restrictionReason || 'Your account has been restricted. Please contact support.',
         isRestricted: true,
         isLocked: !!user.deletionDate,
+      });
+    }
+
+    if (user.deletionDate) {
+      return res.status(403).json({
+        message: 'This account is scheduled for deletion. You must restore it before logging in.',
+        isDeletionScheduled: true,
+        email: user.email
       });
     }
 

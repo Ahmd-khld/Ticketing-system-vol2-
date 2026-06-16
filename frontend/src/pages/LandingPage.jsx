@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import MonkeyForm from '../components/MonkeyForm.jsx';
+import TwoFactorModal from '../components/TwoFactorModal.jsx';
 import api from '../api';
 
 const LandingPage = () => {
@@ -17,7 +18,58 @@ const LandingPage = () => {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotMessage, setForgotMessage] = useState({ type: '', text: '' });
   const [isForgotLoading, setIsForgotLoading] = useState(false);
+  
+  const [show2FA, setShow2FA] = useState(false);
+  const [twoFactorEmail, setTwoFactorEmail] = useState('');
+  const [userRole, setUserRole] = useState('');
+  const [isVerificationMode, setIsVerificationMode] = useState(false);
+
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [restoreEmail, setRestoreEmail] = useState('');
+  const [restorePassword, setRestorePassword] = useState('');
+  const [isRestoring, setIsRestoring] = useState(false);
+
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const queryEmail = params.get('email');
+    const action = params.get('action');
+    const msg = params.get('message');
+
+    if (msg) setError(msg);
+
+    if (queryEmail) {
+      if (action === 'verify') {
+        setTwoFactorEmail(queryEmail);
+        setIsVerificationMode(true);
+        setShow2FA(true);
+      } else if (action === 'forgot') {
+        setForgotEmail(queryEmail);
+        setShowForgotModal(true);
+      }
+    }
+  }, [location]);
+
+  const completeLogin = (data) => {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('role', data.role || 'user');
+    localStorage.setItem('userId', data._id); // CRITICAL: Required for force logout socket listener
+    if (data.requiresPasswordReset) {
+      localStorage.setItem('requiresPasswordReset', 'true');
+    } else {
+      localStorage.removeItem('requiresPasswordReset');
+    }
+
+    if (data.role === 'admin' || data.role === 'sub-admin') {
+      const storedEmail = (data.email || email).toLowerCase().trim();
+      localStorage.setItem('adminEmail', storedEmail);
+      navigate('/admin/dashboard');
+    } else {
+      navigate('/book');
+    }
+  };
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -35,25 +87,40 @@ const LandingPage = () => {
       const data = response.data;
 
       if (!isLogin) {
-        // Registration success - redirect to verification
-        navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+        // Registration success - show verification modal
+        setTwoFactorEmail(email);
+        setUserRole(data.role || 'user');
+        setIsVerificationMode(true);
+        setShow2FA(true);
+        setIsLoading(false);
         return;
       }
 
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('role', data.role || 'user');
-      localStorage.setItem('userId', data._id); // CRITICAL: Required for force logout socket listener
-      const storedEmail = (isLogin ? email : data.email || email).toLowerCase().trim();
-      localStorage.setItem('adminEmail', storedEmail);
-
-      if (data.role === 'admin' || data.role === 'sub-admin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/book');
+      if (data.twoFactorRequired) {
+        setTwoFactorEmail(data.email);
+        setUserRole(data.role || 'user');
+        setIsVerificationMode(false);
+        setShow2FA(true);
+        setIsLoading(false);
+        return;
       }
+
+      completeLogin(data);
     } catch (err) {
+      if (err.response?.status === 403 && err.response?.data?.isDeletionScheduled) {
+        setRestoreEmail(email);
+        setRestorePassword(password);
+        setShowRestoreModal(true);
+        setIsLoading(false);
+        return;
+      }
+
       if (err.response?.status === 401 && err.response?.data?.isVerified === false) {
-        navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+        setTwoFactorEmail(email);
+        setUserRole('user');
+        setIsVerificationMode(true);
+        setShow2FA(true);
+        setIsLoading(false);
         return;
       }
 
@@ -64,6 +131,20 @@ const LandingPage = () => {
       setError(errorMessage);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRestoreAccount = async (e) => {
+    e.preventDefault();
+    setIsRestoring(true);
+    try {
+      await api.post('/users/restore-account', { email: restoreEmail, password: restorePassword });
+      setShowRestoreModal(false);
+      setError('Account restored successfully! You can now log in.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to restore account.');
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -227,6 +308,78 @@ const LandingPage = () => {
         isLoading={isForgotLoading}
         message={forgotMessage}
       />
+
+      <TwoFactorModal
+        isOpen={show2FA}
+        email={twoFactorEmail}
+        role={userRole}
+        isEmailVerification={isVerificationMode}
+        onVerify={completeLogin}
+        onClose={() => setShow2FA(false)}
+      />
+
+      <RestoreAccountModal
+        show={showRestoreModal}
+        onClose={() => setShowRestoreModal(false)}
+        email={restoreEmail}
+        onSubmit={handleRestoreAccount}
+        isLoading={isRestoring}
+      />
+    </div>
+  );
+};
+
+const RestoreAccountModal = ({ show, onClose, email, onSubmit, isLoading }) => {
+  if (!show) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+      <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden border border-smart-light/20 transform transition-all scale-100">
+        <div className="bg-smart-dark p-8 flex justify-between items-center border-b border-white/10 text-white">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-smart-light rounded-full flex items-center justify-center border border-white/20 shadow-lg">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-black italic uppercase tracking-tighter">
+              Welcome Back
+            </h2>
+          </div>
+          <button onClick={onClose} className="hover:text-white/70 transition-colors p-2 rounded-full hover:bg-white/5">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-10 text-center">
+          <p className="text-smart-gray dark:text-gray-400 mb-8 font-medium leading-relaxed">
+            Your account <span className="text-smart-light font-bold">{email}</span> is scheduled for deletion, but it's not too late! Would you like to restore it and pick up where you left off?
+          </p>
+
+          <form onSubmit={onSubmit} className="flex flex-col gap-6">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-95 ${
+                isLoading 
+                  ? 'bg-gray-400 text-white cursor-not-allowed opacity-50' 
+                  : 'bg-smart-light hover:bg-smart-dark text-white'
+              }`}
+            >
+              {isLoading ? 'Restoring...' : 'Yes, Restore My Account'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm font-bold text-gray-400 hover:text-red-500 transition-colors uppercase tracking-widest"
+            >
+              No, keep it scheduled
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };

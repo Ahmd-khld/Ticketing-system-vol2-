@@ -37,19 +37,19 @@ api.interceptors.response.use(
         localStorage.removeItem('adminEmail');
         localStorage.removeItem('userId');
         const message = data?.message || 'Your account has been restricted.';
-        window.location.href = `/login?restrictionReason=${encodeURIComponent(message)}`;
+        window.location.href = `/?restrictionReason=${encodeURIComponent(message)}`;
       }
       
       // Handle Unauthorized/Expired/Malformed Token (401)
       if (status === 401) {
         // Check if we are already on login or landing to avoid redirect loops
         const path = window.location.pathname;
-        if (path !== '/login' && path !== '/' && path !== '/verify-email') {
+        if (path !== '/' && path !== '/verify-email') {
           localStorage.removeItem('token');
           localStorage.removeItem('role');
           localStorage.removeItem('adminEmail');
           localStorage.removeItem('userId');
-          window.location.href = '/login?message=' + encodeURIComponent('Session expired. Please login again.');
+          window.location.href = '/?message=' + encodeURIComponent('Session expired. Please login again.');
         }
       }
     }

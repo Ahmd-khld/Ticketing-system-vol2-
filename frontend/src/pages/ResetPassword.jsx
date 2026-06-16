@@ -19,7 +19,7 @@ const ResetPassword = () => {
   useEffect(() => {
     // If no email is found, kick them back to login or forgot-password
     if (!emailParam) {
-      navigate('/login');
+      navigate('/');
     }
   }, [emailParam, navigate]);
 
@@ -66,7 +66,7 @@ const ResetPassword = () => {
           text: 'Password reset successfully! Redirecting to login...',
         });
         setTimeout(() => {
-          navigate('/login');
+          navigate('/');
         }, 3000);
       }
     } catch (err) {

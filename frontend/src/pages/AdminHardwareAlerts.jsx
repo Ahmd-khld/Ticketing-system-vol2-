@@ -181,7 +181,8 @@ const AdminHardwareAlerts = () => {
            localStorage.removeItem('role');
            localStorage.removeItem('userId');
            localStorage.removeItem('adminEmail');
-           window.location.href = '/login';
+           window.location.href = '/';
+
         }}
       />
 

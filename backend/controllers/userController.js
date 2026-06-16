@@ -23,6 +23,7 @@ const getUserProfile = async (req, res) => {
       hasDisability: user.hasDisability,
       role: user.role,
       savedCards: user.savedCards,
+      deletionDate: user.deletionDate,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -273,6 +274,133 @@ const deleteUserProfile = async (req, res) => {
   }
 };
 
+const cancelAccountDeletion = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.deletionDate = null;
+    await user.save();
+
+    res.json({ message: 'Account deletion cancelled successfully.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const requestAccountDeletion = async (req, res) => {
+  try {
+    const { password } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // 1. Verify Password
+    if (!(await user.matchPassword(password))) {
+      return res.status(401).json({ message: 'Incorrect password.' });
+    }
+
+    // 2. Generate and Send OTP
+    const otpCode = generateOTP();
+    await OTP.findOneAndUpdate(
+      { email: user.email },
+      { otp: otpCode, createdAt: Date.now() },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px;">
+        <h2 style="color: #dc2626; text-align: center;">Account Deletion Request</h2>
+        <p>Hello ${user.name},</p>
+        <p>We received a request to delete your Smart Garden account. To proceed, please use the following verification code:</p>
+        <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #dc2626;">${otpCode}</span>
+        </div>
+        <p><strong>Note:</strong> Once confirmed, your account will be scheduled for deletion in 7 days. You can cancel this request at any time before then by logging into your profile.</p>
+        <p>This code will expire in 10 minutes.</p>
+        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+        <p style="font-size: 12px; color: #6b7280; text-align: center;">Smart Garden IoT System</p>
+      </div>
+    `;
+
+    await sendEmail({
+      to: user.email,
+      subject: 'Security Code: Account Deletion Request',
+      html: emailHtml,
+    });
+
+    res.json({ message: 'Verification code sent to your email.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const confirmAccountDeletion = async (req, res) => {
+  try {
+    const { password, otp } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // 1. Verify Password
+    if (!(await user.matchPassword(password))) {
+      return res.status(401).json({ message: 'Incorrect password.' });
+    }
+
+    // 2. Verify OTP
+    const otpRecord = await OTP.findOne({ email: user.email, otp });
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'Invalid or expired verification code.' });
+    }
+
+    // 3. Schedule Deletion (7 days from now)
+    user.deletionDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    
+    // 4. Invalidate current tokens
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    
+    await user.save();
+
+    // Delete OTP after successful use
+    await OTP.deleteOne({ _id: otpRecord._id });
+
+    res.json({ 
+      message: 'Account scheduled for deletion. You have 7 days to undo this action. You have been logged out.',
+      deletionDate: user.deletionDate 
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const restoreAccount = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    if (!user.deletionDate) {
+      return res.status(400).json({ message: 'This account is not scheduled for deletion.' });
+    }
+
+    // Verify Password
+    if (!(await user.matchPassword(password))) {
+      return res.status(401).json({ message: 'Incorrect password.' });
+    }
+
+    // Cancel deletion
+    user.deletionDate = null;
+    await user.save();
+
+    res.json({ message: 'Account restored successfully. You can now log in.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getUserProfile,
   updateUserProfile,
@@ -280,4 +408,8 @@ module.exports = {
   forgotPassword,
   resetPassword,
   deleteUserProfile,
+  requestAccountDeletion,
+  confirmAccountDeletion,
+  cancelAccountDeletion,
+  restoreAccount,
 };
