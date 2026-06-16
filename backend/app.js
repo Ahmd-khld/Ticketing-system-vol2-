@@ -30,6 +30,7 @@ const grcRoutes = require('./routes/grcRoutes');
 const promoRoutes = require('./routes/promoRoutes');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const emailChangeRoutes = require('./routes/emailChangeRoutes');
 const gameRoutes = require('./routes/gameRoutes');
 const otpRoutes = require('./routes/otpRoutes');
 const telemetryRoutes = require('./routes/telemetryRoutes');
@@ -146,6 +147,7 @@ const logAdminActionServer = async (req, actionDesc) => {
 };
 
 app.use('/api/users', userRoutes);
+app.use('/api/users/email-change', emailChangeRoutes);
 app.use('/api', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/admin', adminRoutes);

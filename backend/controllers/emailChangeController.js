@@ -1,0 +1,249 @@
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const EmailChangeRequest = require('../models/EmailChangeRequest');
+const { sendEmail } = require('../utils/emailService');
+const { generateOtp, hashOtp, verifyOtp } = require('../utils/otpService');
+const { signEmailChangeToken } = require('../middleware/emailChangeToken');
+
+const OTP_TTL_MS = 10 * 60 * 1000; // each individual code lives 10 minutes
+const TEMP_TOKEN_TTL_SECONDS = 10 * 60;
+const MAX_ATTEMPTS = 5; // failed OTP guesses before the request is destroyed
+
+// Escape user input before using it inside a RegExp (case-insensitive email match).
+const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const emailRegexExact = (email) => new RegExp(`^${escapeRegex(email)}$`, 'i');
+
+// Mirrors authRoutes.generateToken so a refreshed session matches login tokens.
+const signSessionToken = (id, tokenVersion) => {
+  const secret = (process.env.JWT_SECRET || '').trim();
+  return jwt.sign({ id: String(id), v: tokenVersion }, secret, { expiresIn: '30d' });
+};
+
+const otpEmailHtml = (otpCode, purposeLine) => `
+  <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px;">
+    <h2 style="color: #0B4228; text-align: center;">Verification Code</h2>
+    <p>Hello,</p>
+    <p>Use the code below ${purposeLine}:</p>
+    <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
+      <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0B4228;">${otpCode}</span>
+    </div>
+    <p>This code expires in 10 minutes. If you did not request this, you can safely ignore this email.</p>
+    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+    <p style="font-size: 12px; color: #6b7280; text-align: center;">Smart Garden IoT System</p>
+  </div>
+`;
+
+/**
+ * PHASE 1a — POST /api/users/email-change/request   (protect)
+ * Start the flow: OTP to the CURRENT email.
+ */
+const requestEmailChange = async (req, res) => {
+  try {
+    const user = req.user;
+    const otp = generateOtp();
+
+    await EmailChangeRequest.findOneAndUpdate(
+      { user: user._id },
+      {
+        user: user._id,
+        step: 'verify-current',
+        currentEmail: user.email,
+        newEmail: null,
+        otpHash: hashOtp(otp),
+        otpExpiresAt: new Date(Date.now() + OTP_TTL_MS),
+        attempts: 0,
+        tokenJti: null,
+        createdAt: Date.now(),
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    const result = await sendEmail({
+      to: user.email,
+      subject: 'Confirm your email change request',
+      html: otpEmailHtml(otp, 'to confirm that you want to change your account email address'),
+    });
+    if (result.status === 'failed') {
+      return res.status(502).json({ message: 'Could not send the verification code. Please try again.' });
+    }
+
+    return res.json({ message: 'A verification code has been sent to your current email address.' });
+  } catch (error) {
+    console.error('[EmailChange] request error:', error.message);
+    return res.status(500).json({ message: 'Could not start the email change process.' });
+  }
+};
+
+/**
+ * PHASE 1b — POST /api/users/email-change/verify-current   (protect)
+ * Verify the current-email OTP; on success mint a short-lived temp token.
+ */
+const verifyCurrentEmail = async (req, res) => {
+  try {
+    const { otp } = req.body;
+    const request = await EmailChangeRequest.findOne({ user: req.user._id });
+
+    if (!request || request.step !== 'verify-current') {
+      return res.status(400).json({ message: 'No pending verification. Please restart the process.' });
+    }
+    if (request.otpExpiresAt < new Date()) {
+      await EmailChangeRequest.deleteOne({ _id: request._id });
+      return res.status(400).json({ message: 'Verification code expired. Please restart the process.' });
+    }
+    if (request.attempts >= MAX_ATTEMPTS) {
+      await EmailChangeRequest.deleteOne({ _id: request._id });
+      return res.status(429).json({ message: 'Too many incorrect attempts. Please restart the process.' });
+    }
+    if (!verifyOtp(otp, request.otpHash)) {
+      request.attempts += 1;
+      await request.save();
+      return res.status(400).json({ message: 'Invalid verification code.' });
+    }
+
+    // Success: advance the state machine and bind a fresh temp token to it.
+    const jti = crypto.randomUUID();
+    request.step = 'set-new-email';
+    request.otpHash = null;
+    request.attempts = 0;
+    request.tokenJti = jti;
+    await request.save();
+
+    const token = signEmailChangeToken(req.user._id, request._id, jti);
+    return res.json({
+      message: 'Identity confirmed. You may now enter your new email address.',
+      token,
+      expiresInSeconds: TEMP_TOKEN_TTL_SECONDS,
+    });
+  } catch (error) {
+    console.error('[EmailChange] verify-current error:', error.message);
+    return res.status(500).json({ message: 'Verification failed.' });
+  }
+};
+
+/**
+ * PHASE 3a — POST /api/users/email-change/set-new-email   (protect + requireEmailChangeToken)
+ * Validate the temp token, ensure the new email is free, OTP to the NEW email.
+ */
+const setNewEmail = async (req, res) => {
+  try {
+    const newEmail = String(req.body.newEmail || '').trim().toLowerCase();
+
+    const request = await EmailChangeRequest.findOne({ user: req.user._id });
+    if (
+      !request ||
+      request.tokenJti !== req.emailChange.jti ||
+      String(request._id) !== String(req.emailChange.requestId)
+    ) {
+      return res.status(401).json({ message: 'This authorization is no longer valid. Please restart.' });
+    }
+    if (!['set-new-email', 'verify-new'].includes(request.step)) {
+      return res.status(400).json({ message: 'Unexpected step. Please restart the process.' });
+    }
+    if (newEmail === String(request.currentEmail).toLowerCase()) {
+      return res.status(400).json({ message: 'The new email must be different from your current email.' });
+    }
+
+    const existing = await User.findOne({ email: emailRegexExact(newEmail) });
+    if (existing) {
+      return res.status(409).json({ message: 'That email address is already in use.' });
+    }
+
+    const otp = generateOtp();
+    request.newEmail = newEmail;
+    request.otpHash = hashOtp(otp);
+    request.otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+    request.attempts = 0;
+    request.step = 'verify-new';
+    await request.save();
+
+    const result = await sendEmail({
+      to: newEmail,
+      subject: 'Verify your new email address',
+      html: otpEmailHtml(otp, 'to verify your new email address'),
+    });
+    if (result.status === 'failed') {
+      return res.status(502).json({ message: 'Could not send a code to the new address. Please try again.' });
+    }
+
+    return res.json({ message: 'A verification code has been sent to your new email address.' });
+  } catch (error) {
+    console.error('[EmailChange] set-new-email error:', error.message);
+    return res.status(500).json({ message: 'Could not set the new email address.' });
+  }
+};
+
+/**
+ * PHASE 3b — POST /api/users/email-change/verify-new   (protect + requireEmailChangeToken)
+ * Final OTP check, commit the new email, invalidate temp token + all sessions.
+ */
+const verifyNewEmail = async (req, res) => {
+  try {
+    const { otp } = req.body;
+    const request = await EmailChangeRequest.findOne({ user: req.user._id });
+
+    if (!request || request.tokenJti !== req.emailChange.jti || request.step !== 'verify-new') {
+      return res.status(401).json({ message: 'This authorization is no longer valid. Please restart.' });
+    }
+    if (request.otpExpiresAt < new Date()) {
+      await EmailChangeRequest.deleteOne({ _id: request._id });
+      return res.status(400).json({ message: 'Verification code expired. Please restart the process.' });
+    }
+    if (request.attempts >= MAX_ATTEMPTS) {
+      await EmailChangeRequest.deleteOne({ _id: request._id });
+      return res.status(429).json({ message: 'Too many incorrect attempts. Please restart the process.' });
+    }
+    if (!verifyOtp(otp, request.otpHash)) {
+      request.attempts += 1;
+      await request.save();
+      return res.status(400).json({ message: 'Invalid verification code.' });
+    }
+
+    // Re-check uniqueness right before commit (guards against a race during the flow).
+    const taken = await User.findOne({
+      email: emailRegexExact(request.newEmail),
+      _id: { $ne: req.user._id },
+    });
+    if (taken) {
+      await EmailChangeRequest.deleteOne({ _id: request._id });
+      return res.status(409).json({ message: 'That email address is now in use. Please restart.' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      await EmailChangeRequest.deleteOne({ _id: request._id });
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const previousEmail = user.email;
+    user.email = request.newEmail;
+    // Invalidate the temp token AND every existing session (forces re-auth).
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+
+    await EmailChangeRequest.deleteOne({ _id: request._id });
+
+    // Best-effort heads-up to the old address (do not block on it).
+    sendEmail({
+      to: previousEmail,
+      subject: 'Your account email address was changed',
+      html: `<p>The email address on your Smart Garden account was changed to <strong>${user.email}</strong>. If this wasn't you, contact support immediately.</p>`,
+    }).catch((e) => console.error('[EmailChange] notify old email failed:', e.message));
+
+    // Issue a fresh session token so the client can refresh seamlessly.
+    const token = signSessionToken(user._id, user.tokenVersion);
+    return res.json({
+      message: 'Email updated successfully. Your previous sessions were signed out.',
+      email: user.email,
+      token,
+    });
+  } catch (error) {
+    if (error && error.code === 11000) {
+      return res.status(409).json({ message: 'That email address is already in use.' });
+    }
+    console.error('[EmailChange] verify-new error:', error.message);
+    return res.status(500).json({ message: 'Could not update the email address.' });
+  }
+};
+
+module.exports = { requestEmailChange, verifyCurrentEmail, setNewEmail, verifyNewEmail };

@@ -1,0 +1,4 @@
+# ESP-IDF generated artifacts
+/build/
+sdkconfig
+sdkconfig.old

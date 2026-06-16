@@ -35,8 +35,40 @@ const adminSearchSchema = z.object({
   }),
 });
 
+// ---- Email change flow ------------------------------------------------------
+const otpCodeSchema = z
+  .string({ invalid_type_error: 'OTP must be a string' })
+  .trim()
+  .regex(/^\d{6}$/, 'OTP must be a 6-digit code');
+
+// Phase 1b: verify the current-email OTP.
+const verifyCurrentEmailSchema = z.object({
+  body: z.object({
+    otp: otpCodeSchema,
+  }),
+});
+
+// Phase 3a: submit the new email (token may also arrive via x-email-change-token header).
+const setNewEmailSchema = z.object({
+  body: z.object({
+    newEmail: z.string().trim().toLowerCase().email('Invalid email format'),
+    token: z.string().min(1).optional(),
+  }),
+});
+
+// Phase 3b: verify the new-email OTP.
+const verifyNewEmailSchema = z.object({
+  body: z.object({
+    otp: otpCodeSchema,
+    token: z.string().min(1).optional(),
+  }),
+});
+
 module.exports = {
   loginValidationSchema,
   registerValidationSchema,
   adminSearchSchema,
+  verifyCurrentEmailSchema,
+  setNewEmailSchema,
+  verifyNewEmailSchema,
 };
