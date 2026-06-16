@@ -41,7 +41,16 @@ const otpCodeSchema = z
   .trim()
   .regex(/^\d{6}$/, 'OTP must be a 6-digit code');
 
-// Phase 1b: verify the current-email OTP.
+// Phase 1a: initiate the change by re-entering the account password.
+const initiateEmailChangeSchema = z.object({
+  body: z.object({
+    password: z
+      .string({ invalid_type_error: 'Password must be a string' })
+      .min(1, 'Password is required'),
+  }),
+});
+
+// Phase 1b: verify the 2FA security code sent to the current email.
 const verifyCurrentEmailSchema = z.object({
   body: z.object({
     otp: otpCodeSchema,
@@ -68,6 +77,7 @@ module.exports = {
   loginValidationSchema,
   registerValidationSchema,
   adminSearchSchema,
+  initiateEmailChangeSchema,
   verifyCurrentEmailSchema,
   setNewEmailSchema,
   verifyNewEmailSchema,

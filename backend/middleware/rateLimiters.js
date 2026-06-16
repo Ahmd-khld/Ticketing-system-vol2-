@@ -22,6 +22,11 @@ const promoLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Rate limiters key off an in-memory store shared across the whole process, which
+// doesn't reset between tests; skip them under NODE_ENV=test so suites that make
+// many OTP calls aren't throttled. Production behavior is unchanged.
+const skipInTest = () => process.env.NODE_ENV === 'test';
+
 // Throttles endpoints that SEND an OTP (prevents email-bombing / cost abuse).
 const otpRequestLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -32,6 +37,7 @@ const otpRequestLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipInTest,
 });
 
 // Throttles endpoints that VERIFY an OTP (network-level brute-force defense,
@@ -45,6 +51,7 @@ const otpVerifyLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipInTest,
 });
 
 module.exports = {

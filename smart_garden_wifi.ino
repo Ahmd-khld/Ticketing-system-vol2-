@@ -30,8 +30,8 @@ const int DHTTYPE = DHT11;
 DHT dht(DHTPIN, DHTTYPE);
 
 // ===================== ESP-01S WIFI SETUP =====================
-// Using A1 (RX from ESP TX) and A2 (TX to ESP RX) — both free pins.
-// Wire: Arduino A1 → ESP TX | Arduino A2 → ESP RX (via 3.3 V voltage divider)
+// Using A4 (RX from ESP TX) and A5 (TX to ESP RX) — both free pins.
+// Wire: Arduino A4 → ESP TX | Arduino A5 → ESP RX (via 3.3 V voltage divider)
 SoftwareSerial espSerial(A4, A5); // RX, TX
 
 const char* WIFI_SSID     = "test";       // <-- Replace with your WiFi SSID
@@ -96,7 +96,6 @@ int bandFromDistance(int d) {
   if (d < 0) return -1;
   if (d <= 5)  return 0;
   if (d <= 10) return 1;
-  if (d <= 15) return 2;
   return 2;
 }
 

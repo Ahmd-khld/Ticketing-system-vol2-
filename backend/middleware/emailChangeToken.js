@@ -34,8 +34,11 @@ const requireEmailChangeToken = (req, res, next) => {
     (req.body && req.body.token) ||
     (req.headers['x-email-change-token'] || '').toString().trim();
 
+  // These return 400 (not 401) deliberately: the user's SESSION is still valid —
+  // only the short-lived email-change token is missing/invalid/expired. A 401 here
+  // would trip the frontend's global logout-on-401 interceptor mid-flow.
   if (!token) {
-    return res.status(401).json({ message: 'Missing email-change authorization token.' });
+    return res.status(400).json({ message: 'Missing email-change authorization token. Please restart.' });
   }
 
   const secret = getSecret();
@@ -47,7 +50,7 @@ const requireEmailChangeToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, secret);
     if (decoded.purpose !== PURPOSE) {
-      return res.status(401).json({ message: 'Invalid token purpose.' });
+      return res.status(400).json({ message: 'Invalid token purpose. Please restart.' });
     }
     // The authenticated session must own the temp token.
     if (req.user && String(req.user._id) !== String(decoded.id)) {
@@ -56,7 +59,7 @@ const requireEmailChangeToken = (req, res, next) => {
     req.emailChange = { userId: decoded.id, requestId: decoded.rid, jti: decoded.jti };
     return next();
   } catch (err) {
-    return res.status(401).json({ message: 'Invalid or expired email-change token.' });
+    return res.status(400).json({ message: 'Invalid or expired email-change token. Please restart.' });
   }
 };
 

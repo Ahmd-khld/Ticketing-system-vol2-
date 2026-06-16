@@ -32,6 +32,17 @@ const Profile = () => {
   const [deleteStep, setDeleteStep] = useState(1); // 1: Password, 2: OTP
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Secure email-change states
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailStep, setEmailStep] = useState(1); // 1: Password, 2: 2FA code, 3: New-email code
+  const [emailPassword, setEmailPassword] = useState('');
+  const [emailCurrentOtp, setEmailCurrentOtp] = useState(['', '', '', '', '', '']);
+  const [emailNewOtp, setEmailNewOtp] = useState(['', '', '', '', '', '']);
+  const [emailTempToken, setEmailTempToken] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [isEmailProcessing, setIsEmailProcessing] = useState(false);
+  const pendingEmailRef = useRef(''); // the desired new email captured at save time
+
   const navigate = useNavigate();
 
   const fetchTickets = useCallback(async () => {
@@ -146,22 +157,117 @@ const Profile = () => {
 
   const handleUpdateInfo = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
+    const emailChanged = email.trim().toLowerCase() !== (user?.email || '').trim().toLowerCase();
+
     try {
-      await api.put(
-        '/users/profile',
-        { name, email, phone, hasDisability },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Save the non-sensitive fields directly (email is intentionally omitted —
+      // it can only change through the secure flow below).
+      await api.put('/users/profile', { name, phone, hasDisability });
+
+      if (emailChanged) {
+        // Kick off the secure email-change dialog: password -> 2FA -> new-email code.
+        pendingEmailRef.current = email.trim();
+        setEmailPassword('');
+        setEmailCurrentOtp(['', '', '', '', '', '']);
+        setEmailNewOtp(['', '', '', '', '', '']);
+        setEmailTempToken('');
+        setEmailError('');
+        setEmailStep(1);
+        setShowEmailModal(true);
+        return;
+      }
 
       setMessage('Profile Updated');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       setMessage(error.response?.data?.message || 'Update failed');
+    }
+  };
+
+  // Step 1: re-authenticate with password -> sends a 2FA code to the current email.
+  const handleEmailInitiate = async (e) => {
+    e.preventDefault();
+    setIsEmailProcessing(true);
+    setEmailError('');
+    try {
+      await api.post('/users/email-change/initiate', { password: emailPassword });
+      setEmailStep(2);
+    } catch (error) {
+      setEmailError(error.response?.data?.message || 'Verification failed.');
+    } finally {
+      setIsEmailProcessing(false);
+    }
+  };
+
+  // Step 2: verify the 2FA code, then immediately register the new email (dup check)
+  // which sends a confirmation code to the new address.
+  const handleEmailVerify2fa = async (e) => {
+    e.preventDefault();
+    setIsEmailProcessing(true);
+    setEmailError('');
+    try {
+      const otp = emailCurrentOtp.join('');
+      const verifyRes = await api.post('/users/email-change/verify-2fa', { otp });
+      const tempToken = verifyRes.data.token;
+      setEmailTempToken(tempToken);
+
+      // Duplicate check + send code to the new address.
+      await api.post('/users/email-change/set-new-email', {
+        newEmail: pendingEmailRef.current,
+        token: tempToken,
+      });
+      setEmailStep(3);
+    } catch (error) {
+      setEmailError(error.response?.data?.message || 'Verification failed.');
+    } finally {
+      setIsEmailProcessing(false);
+    }
+  };
+
+  // Step 3: verify the code sent to the new email -> commit + refresh session token.
+  const handleEmailVerifyNew = async (e) => {
+    e.preventDefault();
+    setIsEmailProcessing(true);
+    setEmailError('');
+    try {
+      const otp = emailNewOtp.join('');
+      const res = await api.post('/users/email-change/verify-new', {
+        otp,
+        token: emailTempToken,
+      });
+
+      // Old sessions are invalidated server-side; adopt the fresh token.
+      if (res.data.token) {
+        localStorage.setItem('token', res.data.token);
+      }
+      setUser((prev) => ({ ...prev, email: res.data.email }));
+      setEmail(res.data.email);
+      setShowEmailModal(false);
+      showModal('Your email address has been updated successfully.', 'Email Updated', 'success');
+    } catch (error) {
+      setEmailError(error.response?.data?.message || 'Verification failed.');
+    } finally {
+      setIsEmailProcessing(false);
+    }
+  };
+
+  const closeEmailModal = () => {
+    setShowEmailModal(false);
+    setEmailStep(1);
+    setEmailPassword('');
+    setEmailError('');
+    // Revert the form field to the real current email so the UI isn't misleading.
+    setEmail(user?.email || '');
+  };
+
+  // Generic 6-box OTP input handler bound to a given state setter.
+  const handleBoxedOtpChange = (element, index, otpArray, setter) => {
+    if (isNaN(element.value)) return false;
+    const next = [...otpArray];
+    next[index] = element.value;
+    setter(next);
+    if (element.nextSibling && element.value !== '') {
+      element.nextSibling.focus();
     }
   };
 
@@ -952,6 +1058,125 @@ const Profile = () => {
                       By confirming, your account will be marked for deletion. You will have exactly 7 days to undo this from your profile.
                     </p>
                   </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Secure Email-Change Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-xl p-6 animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden border border-smart-light/20 transform transition-all animate-scale-up">
+            <div className="bg-smart-dark p-8 text-center relative">
+              <button
+                onClick={closeEmailModal}
+                className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white/20">
+                <svg className="w-10 h-10 text-smart-glow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">
+                {emailStep === 1 ? 'Verify Identity' : emailStep === 2 ? 'Two-Factor Check' : 'Confirm New Email'}
+              </h2>
+              <p className="text-white/70 text-xs font-bold uppercase tracking-widest mt-1">
+                {emailStep === 1
+                  ? 'Enter your password to change your email'
+                  : emailStep === 2
+                    ? `Code sent to ${user.email}`
+                    : `Code sent to ${pendingEmailRef.current}`}
+              </p>
+            </div>
+
+            <div className="p-10">
+              {emailError && (
+                <div className="p-4 mb-6 rounded-2xl font-bold text-xs bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300">
+                  {emailError}
+                </div>
+              )}
+
+              {emailStep === 1 && (
+                <form onSubmit={handleEmailInitiate} className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-black text-smart-dark dark:text-white mb-3 uppercase tracking-widest">
+                      Current Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      autoFocus
+                      value={emailPassword}
+                      onChange={(e) => setEmailPassword(e.target.value)}
+                      className="w-full px-6 py-4 rounded-2xl border-2 border-gray-100 dark:border-gray-700 bg-smart-bg dark:bg-gray-700 text-smart-dark dark:text-white focus:ring-4 focus:ring-smart-light/10 focus:border-smart-light outline-none transition font-medium"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isEmailProcessing}
+                    className="w-full py-4 bg-smart-light hover:bg-smart-dark text-white font-black rounded-2xl shadow-xl transition-all hover:-translate-y-1 uppercase tracking-widest text-sm disabled:opacity-50"
+                  >
+                    {isEmailProcessing ? 'Sending Code...' : 'Send Security Code'}
+                  </button>
+                </form>
+              )}
+
+              {emailStep === 2 && (
+                <form onSubmit={handleEmailVerify2fa} className="space-y-8">
+                  <div className="flex justify-between gap-2">
+                    {emailCurrentOtp.map((data, index) => (
+                      <input
+                        key={index}
+                        type="text"
+                        maxLength="1"
+                        required
+                        className="w-11 h-12 border-2 border-smart-light/30 rounded-xl text-center text-xl font-black bg-smart-bg dark:bg-gray-700 text-smart-dark dark:text-white focus:border-smart-light outline-none transition-all"
+                        value={data}
+                        onChange={(e) => handleBoxedOtpChange(e.target, index, emailCurrentOtp, setEmailCurrentOtp)}
+                        onFocus={(e) => e.target.select()}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isEmailProcessing}
+                    className="w-full py-4 bg-smart-light hover:bg-smart-dark text-white font-black rounded-2xl shadow-xl transition-all hover:-translate-y-1 uppercase tracking-widest text-sm disabled:opacity-50"
+                  >
+                    {isEmailProcessing ? 'Verifying...' : 'Verify & Continue'}
+                  </button>
+                </form>
+              )}
+
+              {emailStep === 3 && (
+                <form onSubmit={handleEmailVerifyNew} className="space-y-8">
+                  <div className="flex justify-between gap-2">
+                    {emailNewOtp.map((data, index) => (
+                      <input
+                        key={index}
+                        type="text"
+                        maxLength="1"
+                        required
+                        className="w-11 h-12 border-2 border-smart-light/30 rounded-xl text-center text-xl font-black bg-smart-bg dark:bg-gray-700 text-smart-dark dark:text-white focus:border-smart-light outline-none transition-all"
+                        value={data}
+                        onChange={(e) => handleBoxedOtpChange(e.target, index, emailNewOtp, setEmailNewOtp)}
+                        onFocus={(e) => e.target.select()}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isEmailProcessing}
+                    className="w-full py-4 bg-smart-light hover:bg-smart-dark text-white font-black rounded-2xl shadow-xl transition-all hover:-translate-y-1 uppercase tracking-widest text-sm disabled:opacity-50"
+                  >
+                    {isEmailProcessing ? 'Updating...' : 'Confirm New Email'}
+                  </button>
                 </form>
               )}
             </div>

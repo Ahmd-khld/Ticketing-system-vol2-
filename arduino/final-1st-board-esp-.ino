@@ -25,14 +25,7 @@ SoftwareSerial espSerial(A4, A5); // RX (to ESP TX), TX (to ESP RX)
 WiFiModule wifi(espSerial);
 PeripheralInterface peripherals;
 
-// Polymorphic socket choice
-#ifdef USE_INSECURE
-InsecureSocket socket_impl(wifi);
-#else
-SecureSocket socket_impl(wifi);
-#endif
-
-// We use pointers/references to handle the conditional socket implementation
+// The concrete socket is chosen at runtime in setup() based on DEBUG_MODE.
 NetworkSocket* activeSocket;
 RuntimeDispatcher* systemRuntime;
 

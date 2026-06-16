@@ -13,6 +13,9 @@ describe('2FA Logic Verification', () => {
   const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase();
 
   beforeAll(async () => {
+    // This suite manages its own in-memory server (it doesn't use tests/setup.js),
+    // so it must also provide the JWT secret the auth middleware requires.
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
     mongoServer = await MongoMemoryServer.create();
     const uri = mongoServer.getUri();
     await mongoose.connect(uri);

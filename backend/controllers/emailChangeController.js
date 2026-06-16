@@ -35,14 +35,29 @@ const otpEmailHtml = (otpCode, purposeLine) => `
 `;
 
 /**
- * PHASE 1a — POST /api/users/email-change/request   (protect)
- * Start the flow: OTP to the CURRENT email.
+ * PHASE 1a — POST /api/users/email-change/initiate   (protect)
+ * Re-authenticate with the account password, then send a 2FA security code to
+ * the CURRENT email. The code is only sent if the password is correct, which
+ * also prevents using this endpoint to email-bomb the address.
  */
-const requestEmailChange = async (req, res) => {
+const initiateEmailChange = async (req, res) => {
   try {
-    const user = req.user;
-    const otp = generateOtp();
+    const { password } = req.body;
 
+    // req.user comes from `protect` with the password field stripped, so re-fetch
+    // the full document to run the schema's matchPassword() comparison.
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    if (!(await user.matchPassword(password))) {
+      // 400 (not 401) on purpose: the session is still valid, only the re-auth
+      // password is wrong. A 401 here would trip the global logout interceptor.
+      return res.status(400).json({ message: 'Incorrect password.' });
+    }
+
+    const otp = generateOtp();
     await EmailChangeRequest.findOneAndUpdate(
       { user: user._id },
       {
@@ -61,23 +76,23 @@ const requestEmailChange = async (req, res) => {
 
     const result = await sendEmail({
       to: user.email,
-      subject: 'Confirm your email change request',
-      html: otpEmailHtml(otp, 'to confirm that you want to change your account email address'),
+      subject: 'Security code to change your email address',
+      html: otpEmailHtml(otp, 'as a two-factor security check to change your account email address'),
     });
     if (result.status === 'failed') {
-      return res.status(502).json({ message: 'Could not send the verification code. Please try again.' });
+      return res.status(502).json({ message: 'Could not send the security code. Please try again.' });
     }
 
-    return res.json({ message: 'A verification code has been sent to your current email address.' });
+    return res.json({ message: 'A two-factor security code has been sent to your current email address.' });
   } catch (error) {
-    console.error('[EmailChange] request error:', error.message);
+    console.error('[EmailChange] initiate error:', error.message);
     return res.status(500).json({ message: 'Could not start the email change process.' });
   }
 };
 
 /**
- * PHASE 1b — POST /api/users/email-change/verify-current   (protect)
- * Verify the current-email OTP; on success mint a short-lived temp token.
+ * PHASE 1b — POST /api/users/email-change/verify-2fa   (protect)
+ * Verify the 2FA security code; on success mint a short-lived temp token.
  */
 const verifyCurrentEmail = async (req, res) => {
   try {
@@ -246,4 +261,4 @@ const verifyNewEmail = async (req, res) => {
   }
 };
 
-module.exports = { requestEmailChange, verifyCurrentEmail, setNewEmail, verifyNewEmail };
+module.exports = { initiateEmailChange, verifyCurrentEmail, setNewEmail, verifyNewEmail };

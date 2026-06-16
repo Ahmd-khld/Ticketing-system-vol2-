@@ -35,8 +35,21 @@ const updateUserProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
 
     if (user) {
+      // Email is a sensitive identifier: it can ONLY be changed through the
+      // secure, verified flow at /api/users/email-change/* (password + 2FA +
+      // new-address verification). Reject attempts to change it here so this
+      // endpoint can't be used to bypass that flow.
+      if (
+        req.body.email &&
+        req.body.email.trim().toLowerCase() !== user.email.trim().toLowerCase()
+      ) {
+        return res.status(400).json({
+          message:
+            'Email cannot be changed here. Use the secure email-change flow (password + 2FA verification).',
+        });
+      }
+
       user.name = req.body.name || user.name;
-      user.email = req.body.email || user.email;
       user.phone = req.body.phone || user.phone;
       if (req.body.hasDisability !== undefined) {
         user.hasDisability = req.body.hasDisability;

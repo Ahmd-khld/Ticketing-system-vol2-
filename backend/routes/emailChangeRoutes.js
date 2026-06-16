@@ -6,12 +6,13 @@ const validateRequest = require('../middleware/validateRequest');
 const { otpRequestLimiter, otpVerifyLimiter } = require('../middleware/rateLimiters');
 const { requireEmailChangeToken } = require('../middleware/emailChangeToken');
 const {
+  initiateEmailChangeSchema,
   verifyCurrentEmailSchema,
   setNewEmailSchema,
   verifyNewEmailSchema,
 } = require('../validators/schemas');
 const {
-  requestEmailChange,
+  initiateEmailChange,
   verifyCurrentEmail,
   setNewEmail,
   verifyNewEmail,
@@ -20,10 +21,18 @@ const {
 // All routes require an authenticated session (protect). Phase-3 routes ALSO
 // require the short-lived temp token from phase 1 (requireEmailChangeToken).
 
-// ---- Phase 1: verify the CURRENT email --------------------------------------
-router.post('/request', protect, otpRequestLimiter, requestEmailChange);
+// ---- Phase 1: re-authenticate (password) then verify a 2FA code -------------
+// Step 1: password -> sends a 2FA security code to the current email.
 router.post(
-  '/verify-current',
+  '/initiate',
+  protect,
+  otpRequestLimiter,
+  validateRequest(initiateEmailChangeSchema),
+  initiateEmailChange
+);
+// Step 2: 2FA code -> returns a short-lived temp token.
+router.post(
+  '/verify-2fa',
   protect,
   otpVerifyLimiter,
   validateRequest(verifyCurrentEmailSchema),

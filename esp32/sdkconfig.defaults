@@ -1,0 +1,8 @@
+# Default config applied on first build / set-target.
+CONFIG_IDF_TARGET="esp32"
+
+# Route console to UART0 so `idf.py qemu monitor` shows our output.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+
+# A roomy main task stack for the C++ objects we build on it.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=4096

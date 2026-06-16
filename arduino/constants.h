@@ -18,7 +18,7 @@
 #define SERVER_PORT_HTTPS 443
 
 // System Parameters
-#define TELEMETRY_INTERVAL 1000 // Transmission every 10 seconds
+#define TELEMETRY_INTERVAL 1000 // Transmission every 1 second (ms)
 #define SSL_BUFFER_SIZE 2048     // ESP8266 SSL buffer
 
 // Security Keys
