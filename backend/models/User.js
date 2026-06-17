@@ -1,19 +1,31 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+const {
+  encryptDeterministic,
+  decryptDeterministic,
+  encryptRandom,
+  decryptRandom,
+} = require('../utils/encryption');
 
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
       required: true,
+      get: decryptRandom,
+      set: encryptRandom,
     },
     email: {
       type: String,
       required: true,
       unique: true,
+      get: decryptDeterministic,
+      set: encryptDeterministic,
     },
     phone: {
       type: String,
+      get: decryptRandom,
+      set: encryptRandom,
     },
     password: {
       type: String,
@@ -70,6 +82,8 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['user', 'admin', 'sub-admin', 'customer', 'viewer'],
       default: 'user',
+      get: decryptDeterministic,
+      set: encryptDeterministic,
     },
     permissions: {
       hardwareControl: { type: Boolean, default: false },
@@ -97,6 +111,8 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
   }
 );
 

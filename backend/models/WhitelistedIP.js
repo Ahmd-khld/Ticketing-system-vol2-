@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { encryptDeterministic, decryptDeterministic } = require('../utils/encryption');
 
 const whitelistedIPSchema = new mongoose.Schema(
   {
@@ -7,14 +8,20 @@ const whitelistedIPSchema = new mongoose.Schema(
       required: true,
       unique: true,
       index: true,
+      get: decryptDeterministic,
+      set: encryptDeterministic,
     },
     macAddress: {
       type: String,
       default: '',
+      get: decryptDeterministic,
+      set: encryptDeterministic,
     },
     adminEmail: {
       type: String,
       default: '',
+      get: decryptDeterministic,
+      set: encryptDeterministic,
     },
     description: {
       type: String,
@@ -23,6 +30,8 @@ const whitelistedIPSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
   }
 );
 

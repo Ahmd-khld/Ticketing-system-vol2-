@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { encryptDeterministic, decryptDeterministic } = require('../utils/encryption');
 
 // The entire two-phase flow must complete within this window. The TTL index
 // guarantees abandoned requests are purged even if the client never returns.
@@ -19,8 +20,18 @@ const emailChangeRequestSchema = new mongoose.Schema(
       enum: ['verify-current', 'set-new-email', 'verify-new'],
       required: true,
     },
-    currentEmail: { type: String, required: true },
-    newEmail: { type: String, default: null },
+    currentEmail: { 
+      type: String, 
+      required: true,
+      get: decryptDeterministic,
+      set: encryptDeterministic,
+    },
+    newEmail: { 
+      type: String, 
+      default: null,
+      get: decryptDeterministic,
+      set: encryptDeterministic,
+    },
 
     // HMAC hash of the OTP for the CURRENT step (never the plaintext code).
     otpHash: { type: String, default: null },
@@ -38,7 +49,11 @@ const emailChangeRequestSchema = new mongoose.Schema(
       expires: EMAIL_CHANGE_TTL_SECONDS,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
+  }
 );
 
 module.exports = mongoose.model('EmailChangeRequest', emailChangeRequestSchema);

@@ -6,8 +6,8 @@ const { buildOtpEmail } = require('../utils/otpEmail');
 
 const getUserProfile = async (req, res) => {
   try {
-    // Use .lean() for faster JSON transformation on read-only queries
-    const user = await User.findById(req.user._id).select('-password').lean();
+    // Do NOT use .lean() because we need Mongoose getters to decrypt PII
+    const user = await User.findById(req.user._id).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     res.json({

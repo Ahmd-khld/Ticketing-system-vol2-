@@ -23,6 +23,7 @@ const GamePage = () => {
   const [trialsUsed, setTrialsUsed] = useState(0);
   const [promoCode, setPromoCode] = useState('');
   const [leaderboard, setLeaderboard] = useState([]);
+  const [isCopied, setIsCopied] = useState(false);
 
   // Physics & Game Loop References
   const itemsRef = useRef([]);
@@ -397,11 +398,30 @@ const GamePage = () => {
           </p>
           <div className="bg-smart-bg dark:bg-gray-700 p-6 rounded-2xl mb-8 border-2 border-dashed border-smart-light shadow-inner">
             <p className="text-xs uppercase tracking-widest text-gray-500 mb-2 font-bold">
-              Your Promo Code
+              Your Promo Code (Valid for 24 Hours)
             </p>
-            <p className="text-3xl font-black text-smart-dark dark:text-white tracking-widest">
-              {promoCode}
-            </p>
+            <div 
+              className={`flex items-center justify-center space-x-4 cursor-pointer group p-2 rounded-xl transition-all ${isCopied ? 'bg-green-500/10' : 'hover:bg-smart-light/10'}`}
+              onClick={() => {
+                navigator.clipboard.writeText(promoCode);
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2000);
+              }}
+              title="Click to copy"
+            >
+              <p className={`text-3xl font-black tracking-widest transition-colors ${isCopied ? 'text-green-600 dark:text-green-400' : 'text-smart-dark dark:text-white group-hover:text-smart-light'}`}>
+                {promoCode}
+              </p>
+              <button 
+                className={`p-2 rounded-lg transition-colors ${isCopied ? 'bg-green-500/20 text-green-600 dark:text-green-400' : 'text-smart-light/60 group-hover:text-smart-light bg-smart-light/10 group-hover:bg-smart-light/20'}`}
+              >
+                {isCopied ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                )}
+              </button>
+            </div>
           </div>
           <button
             onClick={() => navigate('/book', { state: { wonPromoCode: promoCode } })}

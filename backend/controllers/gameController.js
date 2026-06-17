@@ -51,12 +51,14 @@ const handleGameWin = async (req, res) => {
     // Generate 8-char unique code: SMART-XXXX
     const randomSuffix = crypto.randomBytes(2).toString('hex').toUpperCase();
     const code = `SMART-${randomSuffix}`;
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day from now
 
     // Save Promo Code
     const newPromo = new PromoCode({
       code,
       userId: user._id,
       discount: 10,
+      expiresAt,
     });
     await newPromo.save();
 
@@ -105,8 +107,7 @@ const getLeaderboard = async (req, res) => {
     const topUsers = await User.find({ 'gameStats.topScore': { $exists: true, $gt: 0 } })
       .sort({ 'gameStats.topScore': -1 })
       .limit(10)
-      .select('name gameStats.topScore')
-      .lean();
+      .select('name gameStats.topScore');
     res.json(topUsers);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching leaderboard', error: error.message });

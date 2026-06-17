@@ -380,8 +380,12 @@ const checkout = async (req, res) => {
     let validPromo = null;
 
     if (promoCode) {
-      validPromo = await PromoCode.findOne({ code: promoCode.toUpperCase() });
+      const hashedPromo = crypto.createHash('sha256').update(promoCode.toUpperCase()).digest('hex');
+      validPromo = await PromoCode.findOne({ code: hashedPromo });
       if (validPromo) {
+        if (validPromo.expiresAt && new Date() > validPromo.expiresAt) {
+          return res.status(400).json({ message: 'Promo code has expired' });
+        }
         discountMultiplier = (100 - (validPromo.discount || 10)) / 100;
       }
     }
@@ -493,7 +497,7 @@ const checkout = async (req, res) => {
           if (isCashPayment && savedTickets.length > 0) {
             const populatedTickets = await Ticket.find({
               _id: { $in: savedTickets.map((t) => t._id) },
-            }).populate('userId', 'name email phone').lean();
+            }).populate('userId', 'name email phone');
 
             populatedTickets.forEach((t) => {
               io.to('admin-room').emit('newCashTicket', t);
@@ -555,8 +559,8 @@ const checkout = async (req, res) => {
 
 const getTicketHistory = async (req, res) => {
   try {
-    // Use .lean() for faster JSON transformation on read-only queries
-    const tickets = await Ticket.find({ userId: req.user._id }).sort({ createdAt: -1 }).lean();
+    // Do NOT use .lean() because we need Mongoose getters to decrypt User PII
+    const tickets = await Ticket.find({ userId: req.user._id }).sort({ createdAt: -1 });
     res.json(tickets);
   } catch (error) {
     res.status(500).json({ message: error.message });

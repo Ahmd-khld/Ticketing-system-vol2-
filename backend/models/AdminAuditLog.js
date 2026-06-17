@@ -1,14 +1,19 @@
 const mongoose = require('mongoose');
+const { encryptDeterministic, decryptDeterministic } = require('../utils/encryption');
 
 const adminAuditLogSchema = new mongoose.Schema(
   {
     email: {
       type: String,
       required: true,
+      get: decryptDeterministic,
+      set: encryptDeterministic,
     },
     ipAddress: {
       type: String,
       required: true,
+      get: decryptDeterministic,
+      set: encryptDeterministic,
     },
     status: {
       type: String,
@@ -27,6 +32,8 @@ const adminAuditLogSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
   }
 );
 

@@ -305,8 +305,7 @@ const getUsers = async (req, res) => {
         .select('-password -savedCards')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(limit)
-        .lean(),
+        .limit(limit),
       User.countDocuments(query),
     ]);
 
@@ -377,8 +376,7 @@ const getAdmins = async (req, res) => {
         .select('-password -savedCards')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(limit)
-        .lean(),
+        .limit(limit),
       User.countDocuments(query),
     ]);
 
@@ -403,9 +401,9 @@ const getUserTickets = async (req, res) => {
     const userId = (rawUserId || '').trim();
 
     // 1. Resolve the User
-    let targetUser = await User.findById(userId).lean();
+    let targetUser = await User.findById(userId);
     if (!targetUser) {
-      targetUser = await User.findOne({ _id: userId }).lean();
+      targetUser = await User.findOne({ _id: userId });
     }
 
     if (!targetUser) {
@@ -414,7 +412,7 @@ const getUserTickets = async (req, res) => {
 
     // 2. Ticket Search
     const possibleOwnerIds = [targetUser._id];
-    const siblingUsers = await User.find({ email: targetUser.email }).select('_id').lean();
+    const siblingUsers = await User.find({ email: targetUser.email }).select('_id');
     siblingUsers.forEach(u => {
       if (u._id.toString() !== targetUser._id.toString()) {
         possibleOwnerIds.push(u._id);
@@ -1079,7 +1077,7 @@ const getAuditLogs = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const [logs, total] = await Promise.all([
-      AdminAuditLog.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      AdminAuditLog.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit),
       AdminAuditLog.countDocuments(),
     ]);
 
@@ -1111,7 +1109,7 @@ const getBannedIPs = async (req, res) => {
     }
 
     const [bannedIPs, total] = await Promise.all([
-      BannedIP.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      BannedIP.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
       BannedIP.countDocuments(query),
     ]);
 
@@ -1158,7 +1156,7 @@ const getWhitelistedIPs = async (req, res) => {
     }
 
     const [ips, total] = await Promise.all([
-      WhitelistedIP.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      WhitelistedIP.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
       WhitelistedIP.countDocuments(query),
     ]);
 
@@ -2038,8 +2036,7 @@ const getPendingCashTickets = async (req, res) => {
         .populate('userId', 'name email phone')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(limit)
-        .lean(),
+        .limit(limit),
       Ticket.countDocuments(query),
     ]);
 

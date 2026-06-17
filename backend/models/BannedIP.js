@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { encryptDeterministic, decryptDeterministic } = require('../utils/encryption');
 
 const bannedIPSchema = new mongoose.Schema(
   {
@@ -7,6 +8,8 @@ const bannedIPSchema = new mongoose.Schema(
       required: true,
       unique: true,
       index: true,
+      get: decryptDeterministic,
+      set: encryptDeterministic,
     },
     reason: {
       type: String,
@@ -15,6 +18,8 @@ const bannedIPSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
   }
 );
 
