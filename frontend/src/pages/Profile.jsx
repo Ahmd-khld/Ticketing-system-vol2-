@@ -996,8 +996,8 @@ const Profile = () => {
       {/* Account Deletion Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-xl p-6 animate-fade-in">
-          <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden border border-red-500/20 transform transition-all animate-scale-up">
-            <div className="bg-red-600 p-8 text-center relative">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden border border-smart-light/20 transform transition-all animate-scale-up">
+            <div className="bg-smart-dark p-8 text-center relative">
               <button
                 onClick={() => {
                   setShowDeleteModal(false);
@@ -1011,7 +1011,7 @@ const Profile = () => {
                 </svg>
               </button>
               <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white/20">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-10 h-10 text-smart-glow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </div>
@@ -1035,14 +1035,14 @@ const Profile = () => {
                       required
                       value={deletePassword}
                       onChange={(e) => setDeletePassword(e.target.value)}
-                      className="w-full px-6 py-4 rounded-2xl border-2 border-red-100 dark:border-gray-700 bg-smart-bg dark:bg-gray-700 text-smart-dark dark:text-white focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition font-medium"
+                      className="w-full px-6 py-4 rounded-2xl border-2 border-gray-100 dark:border-gray-700 bg-smart-bg dark:bg-gray-700 text-smart-dark dark:text-white focus:ring-4 focus:ring-smart-light/10 focus:border-smart-light outline-none transition font-medium"
                       placeholder="••••••••"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={isDeleting}
-                    className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-2xl shadow-xl transition-all hover:-translate-y-1 uppercase tracking-widest text-sm disabled:opacity-50"
+                    className="w-full py-4 bg-smart-dark hover:bg-red-600 text-white font-black rounded-2xl shadow-xl transition-all hover:-translate-y-1 uppercase tracking-widest text-sm disabled:opacity-50"
                   >
                     {isDeleting ? 'Verifying...' : 'Request Deletion'}
                   </button>
@@ -1056,7 +1056,7 @@ const Profile = () => {
                         type="text"
                         maxLength="1"
                         required
-                        className="w-11 h-12 border-2 border-red-500/30 rounded-xl text-center text-xl font-black bg-red-50/30 dark:bg-gray-700 text-red-600 dark:text-white focus:border-red-500 outline-none transition-all"
+                        className="w-11 h-12 border-2 border-smart-light/30 rounded-xl text-center text-xl font-black bg-smart-light/5 dark:bg-gray-700 text-smart-dark dark:text-white focus:border-smart-light outline-none transition-all"
                         value={data}
                         onChange={(e) => handleOtpChange(e.target, index)}
                         onFocus={(e) => e.target.select()}
@@ -1067,7 +1067,7 @@ const Profile = () => {
                     <button
                       type="submit"
                       disabled={isDeleting}
-                      className="w-full py-5 bg-black text-white font-black rounded-2xl shadow-2xl transition-all hover:bg-red-600 uppercase tracking-widest text-xs disabled:opacity-50"
+                      className="w-full py-5 bg-smart-dark text-white font-black rounded-2xl shadow-2xl transition-all hover:bg-red-600 uppercase tracking-widest text-xs disabled:opacity-50"
                     >
                       {isDeleting ? 'Confirming...' : 'Confirm Permanent Deletion'}
                     </button>

@@ -290,14 +290,38 @@ const NetworkAccessTab = ({ isSuperAdmin }) => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.2) }}
-                        className="hover:bg-smart-bg/50 dark:hover:bg-gray-800/50 transition-colors"
+                        className="hover:bg-smart-bg/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                        onClick={() => {
+                          showModal(
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-left">
+                              <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-smart-gray dark:text-gray-500 block mb-1">IP Address</span>
+                                <span className="font-mono font-bold text-sm text-smart-dark dark:text-white">{ip.ipAddress}</span>
+                              </div>
+                              <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-smart-gray dark:text-gray-500 block mb-1">MAC Address</span>
+                                <span className="font-mono font-bold text-sm text-smart-dark dark:text-white">{ip.macAddress || 'N/A'}</span>
+                              </div>
+                              <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 md:col-span-2">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-smart-gray dark:text-gray-500 block mb-1">Description</span>
+                                <span className="font-medium text-sm text-smart-dark dark:text-white">{ip.description || 'N/A'}</span>
+                              </div>
+                              <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 md:col-span-2">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-smart-gray dark:text-gray-500 block mb-1">Added On</span>
+                                <span className="font-medium text-sm text-smart-dark dark:text-white">{new Date(ip.createdAt).toLocaleString()}</span>
+                              </div>
+                            </div>,
+                            'Whitelisted Node Details',
+                            'info'
+                          );
+                        }}
                       >
                         <td className="px-6 py-4 font-mono text-[13px] font-bold text-smart-dark dark:text-white w-1/4 overflow-hidden truncate">{ip.ipAddress}</td>
                         <td className="px-6 py-4 font-mono text-xs text-smart-gray dark:text-gray-400 font-medium w-80 overflow-hidden truncate">{ip.macAddress || 'N/A'}</td>
                         <td className="px-6 py-4 text-xs text-smart-gray dark:text-gray-400 font-medium overflow-hidden truncate">{ip.description || 'N/A'}</td>
                         <td className="px-4 py-3 text-[11px] font-bold text-smart-gray dark:text-gray-500 w-40">{new Date(ip.createdAt).toLocaleString()}</td>
                         <td className="px-4 py-3 text-right pr-6 w-32">
-                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleRemoveWhitelistIP(ip._id)} className="px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[10px] font-black uppercase transition-colors border border-red-500/20">Remove</motion.button>
+                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={(e) => { e.stopPropagation(); handleRemoveWhitelistIP(ip._id); }} className="px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[10px] font-black uppercase transition-colors border border-red-500/20">Remove</motion.button>
                         </td>
                       </motion.tr>
                     ))}
@@ -385,13 +409,33 @@ const NetworkAccessTab = ({ isSuperAdmin }) => {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0 }}
                           transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.2) }}
-                          className="hover:bg-smart-bg/50 dark:hover:bg-gray-800/50 transition-colors"
+                          className="hover:bg-smart-bg/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                          onClick={() => {
+                            showModal(
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-left">
+                                <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30">
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-red-500 block mb-1">IP Address</span>
+                                  <span className="font-mono font-bold text-sm text-red-700 dark:text-red-400">{banned.ipAddress}</span>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-smart-gray dark:text-gray-500 block mb-1">Date Banned</span>
+                                  <span className="font-medium text-sm text-smart-dark dark:text-white">{new Date(banned.createdAt).toLocaleString()}</span>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 md:col-span-2">
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-smart-gray dark:text-gray-500 block mb-1">Reason for Ban</span>
+                                  <span className="font-medium text-sm text-smart-dark dark:text-white">{banned.reason || 'N/A'}</span>
+                                </div>
+                              </div>,
+                              'Banned IP Details',
+                              'error'
+                            );
+                          }}
                         >
                           <td className="px-4 py-3 pl-6 font-mono text-[13px] font-bold text-smart-dark dark:text-white w-1/4 overflow-hidden truncate">{banned.ipAddress}</td>
                           <td className="px-4 py-3 text-xs text-smart-gray dark:text-gray-400 font-medium overflow-hidden truncate">{banned.reason}</td>
                           <td className="px-4 py-3 text-[11px] font-bold text-smart-gray dark:text-gray-500 w-[180px]">{new Date(banned.createdAt).toLocaleString()}</td>
                           <td className="px-4 py-3 pr-6 text-right w-[120px]">
-                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleUnbanIP(banned._id)} className="px-4 py-1.5 bg-smart-light/10 hover:bg-smart-light/20 text-smart-dark dark:text-smart-glow rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20">Unban</motion.button>
+                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={(e) => { e.stopPropagation(); handleUnbanIP(banned._id); }} className="px-4 py-1.5 bg-smart-light/10 hover:bg-smart-light/20 text-smart-dark dark:text-smart-glow rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors border border-smart-light/20">Unban</motion.button>
                           </td>
                         </motion.tr>
                       ))}

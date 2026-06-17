@@ -246,7 +246,7 @@ const BookingPage = () => {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full left-0 right-0 mt-3 bg-white dark:bg-gray-800 border-2 border-smart-light/20 rounded-2xl shadow-2xl z-[100] overflow-hidden py-2 max-h-[250px] overflow-y-auto custom-scrollbar"
+                        className="absolute top-full left-0 right-0 mt-3 bg-white dark:bg-gray-800 border-2 border-smart-light/20 rounded-2xl shadow-2xl z-40 overflow-hidden py-2 max-h-[250px] overflow-y-auto custom-scrollbar"
                       >
                         {insights?.days.map((day) => {
                           const isSoldOut = day.count >= (insights?.capacity || 200);
