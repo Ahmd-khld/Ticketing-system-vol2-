@@ -49,8 +49,9 @@ const updateUserProfile = async (req, res) => {
         });
       }
 
-      user.name = req.body.name || user.name;
-      user.phone = req.body.phone || user.phone;
+      // Name and phone are immutable via self-service profile updates: they are
+      // intentionally never applied here, regardless of the request body. Only
+      // accessibility preference can be changed (email goes through its own flow).
       if (req.body.hasDisability !== undefined) {
         user.hasDisability = req.body.hasDisability;
       }

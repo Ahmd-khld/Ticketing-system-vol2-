@@ -160,9 +160,9 @@ const Profile = () => {
     const emailChanged = email.trim().toLowerCase() !== (user?.email || '').trim().toLowerCase();
 
     try {
-      // Save the non-sensitive fields directly (email is intentionally omitted —
-      // it can only change through the secure flow below).
-      await api.put('/users/profile', { name, phone, hasDisability });
+      // Name and phone are immutable; email goes through the secure flow below.
+      // Only the accessibility preference is updated directly here.
+      await api.put('/users/profile', { hasDisability });
 
       if (emailChanged) {
         // Kick off the secure email-change dialog: password -> 2FA -> new-email code.
@@ -524,13 +524,15 @@ const Profile = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   <div>
                     <label className="block text-[10px] md:text-sm font-extrabold text-smart-dark dark:text-white mb-2 uppercase tracking-wide">
-                      Full Name
+                      Full Name <span className="text-smart-gray dark:text-gray-500 normal-case font-medium">(cannot be changed)</span>
                     </label>
                     <input
                       type="text"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full px-4 md:px-5 py-3 md:py-4 rounded-xl border border-gray-200 dark:border-gray-600 focus:ring-4 focus:ring-smart-light/20 focus:border-smart-light outline-none transition bg-smart-bg dark:bg-gray-700 focus:bg-white dark:focus:bg-gray-600 font-medium text-sm md:text-base text-smart-dark dark:text-white"
+                      readOnly
+                      disabled
+                      title="Your name cannot be changed"
+                      className="w-full px-4 md:px-5 py-3 md:py-4 rounded-xl border border-gray-200 dark:border-gray-600 outline-none bg-gray-100 dark:bg-gray-800 font-medium text-sm md:text-base text-smart-gray dark:text-gray-400 cursor-not-allowed"
                     />
                   </div>
                   <div>
@@ -548,13 +550,15 @@ const Profile = () => {
 
                 <div>
                   <label className="block text-[10px] md:text-sm font-extrabold text-smart-dark dark:text-white mb-2 uppercase tracking-wide">
-                    Phone Number
+                    Phone Number <span className="text-smart-gray dark:text-gray-500 normal-case font-medium">(cannot be changed)</span>
                   </label>
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 md:px-5 py-3 md:py-4 rounded-xl border border-gray-200 dark:border-gray-600 focus:ring-4 focus:ring-smart-light/20 focus:border-smart-light outline-none transition bg-smart-bg dark:bg-gray-700 focus:bg-white dark:focus:bg-gray-600 font-medium max-w-md text-sm md:text-base text-smart-dark dark:text-white"
+                    readOnly
+                    disabled
+                    title="Your phone number cannot be changed"
+                    className="w-full px-4 md:px-5 py-3 md:py-4 rounded-xl border border-gray-200 dark:border-gray-600 outline-none bg-gray-100 dark:bg-gray-800 font-medium max-w-md text-sm md:text-base text-smart-gray dark:text-gray-400 cursor-not-allowed"
                   />
                 </div>
 

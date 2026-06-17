@@ -104,4 +104,17 @@ describe('Secure email-change flow', () => {
     const updated = await User.findById(user._id);
     expect(updated.email).toEqual('current@test.com');
   });
+
+  it('treats name and phone as immutable on the profile endpoint', async () => {
+    const res = await request(app)
+      .put('/api/users/profile')
+      .set('Authorization', auth)
+      .send({ name: 'Hacked Name', phone: '0000000000', hasDisability: true });
+    expect(res.statusCode).toEqual(200);
+
+    const updated = await User.findById(user._id);
+    expect(updated.name).toEqual('Test User'); // unchanged
+    expect(updated.phone).toBeFalsy(); // unchanged (never set)
+    expect(updated.hasDisability).toEqual(true); // accessibility is still updatable
+  });
 });
