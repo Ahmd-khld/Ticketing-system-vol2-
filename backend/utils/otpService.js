@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const OTP = require('../models/OTP');
 
 /**
  * otpService — centralized, security-focused OTP generation & verification.
@@ -42,4 +43,30 @@ const verifyOtp = (plainOtp, storedHash) => {
   return crypto.timingSafeEqual(computed, stored);
 };
 
-module.exports = { generateOtp, hashOtp, verifyOtp, OTP_LENGTH };
+// ---- Shared OTP collection helpers (hashed at rest) -------------------------
+// These back the legacy email-OTP flows (login verification, 2FA, password reset,
+// account deletion). One OTP document per email; the plaintext code is returned
+// only to the caller for emailing and is never persisted.
+
+const issueOtp = async (email) => {
+  const code = generateOtp();
+  await OTP.findOneAndUpdate(
+    { email },
+    { otp: hashOtp(code), createdAt: Date.now() },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  return code;
+};
+
+// Returns true and consumes (deletes) the OTP on a correct match, false otherwise.
+const consumeOtp = async (email, code) => {
+  if (!code) return false;
+  const record = await OTP.findOne({ email });
+  if (record && verifyOtp(code, record.otp)) {
+    await OTP.deleteOne({ _id: record._id });
+    return true;
+  }
+  return false;
+};
+
+module.exports = { generateOtp, hashOtp, verifyOtp, issueOtp, consumeOtp, OTP_LENGTH };

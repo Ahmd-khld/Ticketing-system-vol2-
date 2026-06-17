@@ -1,13 +1,8 @@
 const User = require('../models/User');
-const crypto = require('crypto');
-const bcrypt = require('bcrypt');
 const Ticket = require('../models/Ticket');
-const OTP = require('../models/OTP');
 const { sendEmail } = require('../utils/emailService');
-
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
+const { issueOtp, consumeOtp } = require('../utils/otpService');
+const { buildOtpEmail } = require('../utils/otpEmail');
 
 const getUserProfile = async (req, res) => {
   try {
@@ -118,33 +113,16 @@ const forgotPassword = async (req, res) => {
       return res.status(404).json({ message: 'User with this email does not exist' });
     }
 
-    const otpCode = generateOTP();
-
-    // Upsert OTP for the email
-    await OTP.findOneAndUpdate(
-      { email },
-      { otp: otpCode, createdAt: Date.now() },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    const emailHtml = `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px;">
-        <h2 style="color: #0B4228; text-align: center;">Password Reset Code</h2>
-        <p>Hello,</p>
-        <p>You requested to reset your password. Your verification code is:</p>
-        <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
-          <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0B4228;">${otpCode}</span>
-        </div>
-        <p>This code will expire in 10 minutes. If you did not request this, please ignore this email.</p>
-        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-        <p style="font-size: 12px; color: #6b7280; text-align: center;">Smart Garden IoT System</p>
-      </div>
-    `;
+    const otpCode = await issueOtp(email);
 
     const emailResult = await sendEmail({
       to: user.email,
       subject: 'Password Reset Verification Code',
-      html: emailHtml,
+      html: buildOtpEmail({
+        otp: otpCode,
+        heading: 'Password Reset Code',
+        intro: 'You requested to reset your password. Your verification code is:',
+      }),
     });
 
     if (emailResult.status === 'success') {
@@ -175,9 +153,9 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    const otpRecord = await OTP.findOne({ email, otp });
+    const otpValid = await consumeOtp(email, otp);
 
-    if (otpRecord) {
+    if (otpValid) {
       // Set new password
       user.password = password; // Hashing is handled by pre-save middleware
       user.otpAttempts = 0;
@@ -186,9 +164,6 @@ const resetPassword = async (req, res) => {
       user.restrictionReason = '';
       user.requiresPasswordReset = false; // Phase 3 Playbook Cleanup
       await user.save();
-
-      // Delete OTP after successful reset
-      await OTP.deleteOne({ _id: otpRecord._id });
 
       res.json({ message: 'Password has been reset successfully' });
     } else {
@@ -315,32 +290,18 @@ const requestAccountDeletion = async (req, res) => {
     }
 
     // 2. Generate and Send OTP
-    const otpCode = generateOTP();
-    await OTP.findOneAndUpdate(
-      { email: user.email },
-      { otp: otpCode, createdAt: Date.now() },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    const emailHtml = `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px;">
-        <h2 style="color: #dc2626; text-align: center;">Account Deletion Request</h2>
-        <p>Hello ${user.name},</p>
-        <p>We received a request to delete your Smart Garden account. To proceed, please use the following verification code:</p>
-        <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
-          <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #dc2626;">${otpCode}</span>
-        </div>
-        <p><strong>Note:</strong> Once confirmed, your account will be scheduled for deletion in 7 days. You can cancel this request at any time before then by logging into your profile.</p>
-        <p>This code will expire in 10 minutes.</p>
-        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-        <p style="font-size: 12px; color: #6b7280; text-align: center;">Smart Garden IoT System</p>
-      </div>
-    `;
+    const otpCode = await issueOtp(user.email);
 
     await sendEmail({
       to: user.email,
       subject: 'Security Code: Account Deletion Request',
-      html: emailHtml,
+      html: buildOtpEmail({
+        otp: otpCode,
+        heading: 'Account Deletion Request',
+        greeting: `Hello ${user.name},`,
+        intro: 'We received a request to delete your Smart Garden account. To proceed, please use the following verification code:',
+        note: 'Once confirmed, your account will be scheduled for deletion in 7 days. You can cancel any time before then from your profile. This code expires in 10 minutes.',
+      }),
     });
 
     res.json({ message: 'Verification code sent to your email.' });
@@ -362,23 +323,21 @@ const confirmAccountDeletion = async (req, res) => {
     }
 
     // 2. Verify OTP
-    const otpRecord = await OTP.findOne({ email: user.email, otp });
-    if (!otpRecord) {
+    const otpValid = await consumeOtp(user.email, otp);
+    if (!otpValid) {
       return res.status(400).json({ message: 'Invalid or expired verification code.' });
     }
 
     // 3. Schedule Deletion (7 days from now)
     user.deletionDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    
+
     // 4. Invalidate current tokens
     user.tokenVersion = (user.tokenVersion || 0) + 1;
-    
+
     await user.save();
+    // OTP already consumed by consumeOtp() above.
 
-    // Delete OTP after successful use
-    await OTP.deleteOne({ _id: otpRecord._id });
-
-    res.json({ 
+    res.json({
       message: 'Account scheduled for deletion. You have 7 days to undo this action. You have been logged out.',
       deletionDate: user.deletionDate 
     });

@@ -292,8 +292,13 @@ const runRiskAssessment = async () => {
  * Debounced trigger for GRC updates
  */
 const triggerGRCUpdate = () => {
+  // Skip the Python-spawning background job during tests: its 2s debounce fires
+  // after the triggering test tears down, leaking a child process and tripping
+  // Jest's "Cannot log after tests are done" (a source of flaky failures).
+  if (process.env.NODE_ENV === 'test') return;
+
   if (updateTimeout) clearTimeout(updateTimeout);
-  
+
   // 2-second debounce to handle rapid log sequences
   updateTimeout = setTimeout(() => {
     runRiskAssessment();

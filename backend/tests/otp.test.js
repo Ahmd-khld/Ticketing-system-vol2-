@@ -2,6 +2,7 @@ const request = require('supertest');
 const { app } = require('../app');
 const dbHandler = require('./setup');
 const OTP = require('../models/OTP');
+const { hashOtp } = require('../utils/otpService');
 
 // Mock email service
 jest.mock('../utils/emailService', () => ({
@@ -24,14 +25,15 @@ describe('OTP API', () => {
       
       const otpRecord = await OTP.findOne({ email: 'test@example.com' });
       expect(otpRecord).toBeTruthy();
-      expect(otpRecord.otp).toHaveLength(6);
+      // Stored value is a SHA-256 HMAC hash (64 hex chars), never the raw code.
+      expect(otpRecord.otp).toHaveLength(64);
     });
   });
 
   describe('POST /api/otp/verify-otp', () => {
     it('should verify OTP successfully', async () => {
       const email = 'verify@example.com';
-      await OTP.create({ email, otp: '123456' });
+      await OTP.create({ email, otp: hashOtp('123456') });
 
       const res = await request(app)
         .post('/api/otp/verify-otp')
@@ -46,7 +48,7 @@ describe('OTP API', () => {
 
     it('should fail with incorrect OTP', async () => {
       const email = 'fail@example.com';
-      await OTP.create({ email, otp: '123456' });
+      await OTP.create({ email, otp: hashOtp('123456') });
 
       const res = await request(app)
         .post('/api/otp/verify-otp')

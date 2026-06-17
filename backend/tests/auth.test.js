@@ -2,6 +2,7 @@ const request = require('supertest');
 const { app } = require('../app');
 const dbHandler = require('./setup');
 const User = require('../models/User');
+const { hashOtp } = require('../utils/otpService');
 
 beforeAll(async () => await dbHandler.connect());
 afterEach(async () => await dbHandler.clearDatabase());
@@ -60,7 +61,7 @@ describe('Auth API', () => {
       
       // Need to create OTP record since we're bypassing the register logic
       const OTP = require('../models/OTP');
-      await OTP.create({ email, otp: '123456' });
+      await OTP.create({ email, otp: hashOtp('123456') });
 
       const res = await request(app)
         .post('/api/verify-email')
@@ -85,7 +86,7 @@ describe('Auth API', () => {
       });
       
       const OTP = require('../models/OTP');
-      await OTP.create({ email, otp: '123456' });
+      await OTP.create({ email, otp: hashOtp('123456') });
 
       const res = await request(app)
         .post('/api/verify-email')

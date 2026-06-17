@@ -1,8 +1,10 @@
 const express = require('express');
 const User = require('../models/User');
-const OTP = require('../models/OTP');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/emailService');
+const { issueOtp, consumeOtp } = require('../utils/otpService');
+const { buildOtpEmail } = require('../utils/otpEmail');
+const logger = require('../utils/logger');
 const validateRequest = require('../middleware/validateRequest');
 const { loginValidationSchema, registerValidationSchema } = require('../validators/schemas');
 const { authLimiter } = require('../middleware/rateLimiters');
@@ -16,10 +18,6 @@ const generateToken = (id, tokenVersion = 0) => {
   return jwt.sign({ id, v: tokenVersion }, secret, {
     expiresIn: '30d',
   });
-};
-
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 // @desc    Register a new user
@@ -47,31 +45,17 @@ router.post('/register', validateRequest(registerValidationSchema), async (req, 
 
     if (user) {
       // Generate and send OTP
-      const otpCode = generateOTP();
-      await OTP.findOneAndUpdate(
-        { email },
-        { otp: otpCode, createdAt: Date.now() },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
-
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px;">
-          <h2 style="color: #0B4228; text-align: center;">Welcome to Smart Garden!</h2>
-          <p>Hello ${name},</p>
-          <p>Thank you for registering. Please use the following code to verify your email address:</p>
-          <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
-            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0B4228;">${otpCode}</span>
-          </div>
-          <p>This code will expire in 10 minutes.</p>
-          <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-          <p style="font-size: 12px; color: #6b7280; text-align: center;">Smart Garden IoT System</p>
-        </div>
-      `;
+      const otpCode = await issueOtp(email);
 
       await sendEmail({
         to: email,
         subject: 'Verify Your Email - Smart Garden',
-        html: emailHtml,
+        html: buildOtpEmail({
+          otp: otpCode,
+          heading: 'Welcome to Smart Garden!',
+          greeting: `Hello ${name},`,
+          intro: 'Thank you for registering. Please use the following code to verify your email address:',
+        }),
       });
 
       res.status(201).json({
@@ -114,9 +98,9 @@ router.post('/verify-email', async (req, res) => {
       });
     }
 
-    const otpRecord = await OTP.findOne({ email, otp });
+    const otpValid = await consumeOtp(email, otp);
 
-    if (otpRecord) {
+    if (otpValid) {
       user.isVerified = true;
       user.lastLogin = new Date(); // Record initial login upon verification
       user.otpAttempts = 0;
@@ -124,8 +108,6 @@ router.post('/verify-email', async (req, res) => {
       user.isRestricted = false;
       user.restrictionReason = '';
       await user.save();
-
-      await OTP.deleteOne({ _id: otpRecord._id });
 
       res.json({
         message: 'Email verified successfully',
@@ -197,31 +179,17 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
     if (await user.matchPassword(password)) {
       if (!user.isVerified) {
         // Generate and send NEW OTP on login attempt if not verified
-        const otpCode = generateOTP();
-        await OTP.findOneAndUpdate(
-          { email: user.email },
-          { otp: otpCode, createdAt: Date.now() },
-          { upsert: true, new: true, setDefaultsOnInsert: true }
-        );
-
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px;">
-            <h2 style="color: #0B4228; text-align: center;">Verify Your Email</h2>
-            <p>Hello ${user.name},</p>
-            <p>You attempted to login but your email is not yet verified. Please use the following code to complete your verification:</p>
-            <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0B4228;">${otpCode}</span>
-            </div>
-            <p>This code will expire in 10 minutes.</p>
-            <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-            <p style="font-size: 12px; color: #6b7280; text-align: center;">Smart Garden IoT System</p>
-          </div>
-        `;
+        const otpCode = await issueOtp(user.email);
 
         await sendEmail({
           to: user.email,
           subject: 'Action Required: Verify Your Email - Smart Garden',
-          html: emailHtml,
+          html: buildOtpEmail({
+            otp: otpCode,
+            heading: 'Verify Your Email',
+            greeting: `Hello ${user.name},`,
+            intro: 'You attempted to login but your email is not yet verified. Please use the following code to complete your verification:',
+          }),
         });
 
         return res.status(401).json({
@@ -242,31 +210,17 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
 
       if (!isSuperAdmin && (isForced2FA || (isInactive && is2FAExpired))) {
         // Generate and send 2FA OTP
-        const otpCode = generateOTP();
-        await OTP.findOneAndUpdate(
-          { email: user.email },
-          { otp: otpCode, createdAt: Date.now() },
-          { upsert: true, new: true, setDefaultsOnInsert: true }
-        );
-
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px;">
-            <h2 style="color: #0B4228; text-align: center;">Security Check: 2FA Required</h2>
-            <p>Hello ${user.name},</p>
-            <p>${isForced2FA ? 'Your account requires 2FA for every login.' : "It's been a while since your last login."} For your security, please use the following code to complete your login:</p>
-            <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0B4228;">${otpCode}</span>
-            </div>
-            <p>This code will expire in 10 minutes.</p>
-            <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-            <p style="font-size: 12px; color: #6b7280; text-align: center;">Smart Garden IoT System</p>
-          </div>
-        `;
+        const otpCode = await issueOtp(user.email);
 
         await sendEmail({
           to: user.email,
           subject: 'Security Code - Smart Garden 2FA',
-          html: emailHtml,
+          html: buildOtpEmail({
+            otp: otpCode,
+            heading: 'Security Check: 2FA Required',
+            greeting: `Hello ${user.name},`,
+            intro: `${isForced2FA ? 'Your account requires 2FA for every login.' : "It's been a while since your last login."} For your security, please use the following code to complete your login:`,
+          }),
         });
 
         // Reset attempts when a new 2FA is triggered to allow fresh start
@@ -322,9 +276,9 @@ router.post('/verify-2fa', async (req, res) => {
       return res.status(403).json({ message: 'Account is restricted' });
     }
 
-    const otpRecord = await OTP.findOne({ email, otp });
+    const otpValid = await consumeOtp(email, otp);
 
-    if (otpRecord) {
+    if (otpValid) {
       user.lastLogin = new Date();
       user.otpAttempts = 0; // Reset attempts on success
       if (rememberMe) {
@@ -334,8 +288,6 @@ router.post('/verify-2fa', async (req, res) => {
         user.twoFactorExpires = null;
       }
       await user.save();
-
-      await OTP.deleteOne({ _id: otpRecord._id });
 
       res.json({
         _id: user._id,

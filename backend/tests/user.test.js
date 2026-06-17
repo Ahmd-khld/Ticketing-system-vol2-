@@ -4,6 +4,7 @@ const dbHandler = require('./setup');
 const User = require('../models/User');
 const OTP = require('../models/OTP');
 const jwt = require('jsonwebtoken');
+const { hashOtp } = require('../utils/otpService');
 
 // Mock email service
 jest.mock('../utils/emailService', () => ({
@@ -65,7 +66,7 @@ describe('User API', () => {
 
   describe('POST /api/users/reset-password', () => {
     it('should reset password successfully with correct OTP', async () => {
-      await OTP.create({ email: 'user@test.com', otp: '123456' });
+      await OTP.create({ email: 'user@test.com', otp: hashOtp('123456') });
 
       const res = await request(app)
         .post('/api/users/reset-password')

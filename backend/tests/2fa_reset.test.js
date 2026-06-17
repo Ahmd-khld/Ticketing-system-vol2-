@@ -87,7 +87,8 @@ describe('2FA Logic Verification', () => {
     // 3. Verify OTP was generated
     const otpDoc = await OTP.findOne({ email: 'subadmin@example.com' });
     expect(otpDoc).not.toBeNull();
-    expect(otpDoc.otp).toMatch(/^\d{6}$/);
+    // OTP is now stored hashed (SHA-256 HMAC = 64 hex chars), not as the raw code.
+    expect(otpDoc.otp).toHaveLength(64);
   });
 
   it('should NOT mandate 2FA for Super Admin even if forced or inactive', async () => {

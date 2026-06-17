@@ -11,124 +11,18 @@ const bcrypt = require('bcrypt');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const grcService = require('../utils/grcService');
 
 const failedScans = new Map(); // Track failed scan attempts to prevent brute force
 
-const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase().trim();
-
-const isSuperAdmin = (req) => {
-  if (!req.user || !req.user.email) return false;
-  return req.user.email.toLowerCase().trim() === superAdminEmail;
-};
-
-const logAdminAction = async (req, actionDesc) => {
-  try {
-    if (!req.user || !req.user.email) return;
-    const log = await AdminAuditLog.create({
-      email: req.user.email,
-      ipAddress: req.ip || 'unknown-client',
-      status: 'success',
-      statusCode: 200,
-      action: actionDesc,
-      userAgent: req.get('User-Agent') || 'Unknown',
-    });
-    const io = req.app.get('io');
-    if (io) io.emit('auditLogUpdate', log);
-
-    // Live GRC Integration: Trigger risk assessment update on every admin action
-    grcService.triggerGRCUpdate();
-  } catch (err) {
-    console.error('Audit Log Error:', err);
-  }
-};
-
-const broadcastOccupancy = async (req) => {
-  const io = req.app.get('io');
-  if (!io) return;
-
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date();
-  endOfDay.setHours(23, 59, 59, 999);
-
-  // Robust occupancy calculation:
-  // 1. One-time tickets marked as 'USED' today
-  // 2. Monthly passes with a scan entry recorded today
-  const currentOccupancy = await Ticket.countDocuments({
-    $or: [
-      { status: 'USED', updatedAt: { $gte: startOfDay, $lte: endOfDay } },
-      { scanHistory: { $elemMatch: { $gte: startOfDay, $lte: endOfDay } } },
-    ],
-  });
-  const maxCapacity = parseInt(process.env.DAILY_CAPACITY) || 1000;
-  const capacityPercentage = Math.round((currentOccupancy / maxCapacity) * 100);
-
-  // Broadcast to everyone (legacy)
-  io.emit('occupancyUpdate', { currentOccupancy, capacityPercentage });
-
-  // Broadcast specifically to admin room (new)
-  io.to('admin-room').emit('occupancyUpdated', {
-    currentOccupancy,
-    capacityPercentage,
-    maxCapacity,
-    updatedAt: new Date(),
-  });
-};
-
-// Helper to broadcast ticket status changes in real-time
-const broadcastTicketStatus = (req, ticket) => {
-  const io = req.app.get('io');
-  if (!io) return;
-
-  const ticketData = typeof ticket.toObject === 'function' ? ticket.toObject() : ticket;
-
-  const payload = {
-    ticketId: ticket._id.toString(),
-    userId: ticket.userId.toString(),
-    status: ticket.status,
-    paymentStatus: ticket.paymentStatus,
-    updatedAt: ticket.updatedAt,
-    ticket: ticketData,
-  };
-
-  const roomName = `user-${ticket.userId.toString()}-tickets`;
-  console.log(`[Socket Debug] broadcastTicketStatus: Sending TICKET_STATUS_UPDATED to ${roomName}`);
-
-  // Send the specific update
-  io.to(roomName).emit('TICKET_STATUS_UPDATED', payload);
-
-  // Fallback: Notify the client to re-fetch if they missed the specific update
-  io.to(roomName).emit('dataRefresh');
-
-  // Global/Legacy broadcasts
-  io.to(roomName).emit('ticketScanned', payload);
-  io.emit('globalTicketUpdate', payload);
-};
-
-// Helper to save and broadcast hardware alerts from the Gate Scanner
-const createHardwareAlert = async (req, message, type) => {
-  try {
-    const timeString = new Date().toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    const newAlert = new HardwareAlert({ message, type, timeString });
-    await newAlert.save();
-
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('hardwareAlert', {
-        id: newAlert._id,
-        time: timeString,
-        message: newAlert.message,
-        type: newAlert.type,
-      });
-    }
-  } catch (err) {
-    console.error('Failed to create hardware alert:', err);
-  }
-};
+// Shared admin helpers (audit logging, realtime broadcasts) live in ./admin/helpers.
+const {
+  superAdminEmail,
+  isSuperAdmin,
+  logAdminAction,
+  broadcastOccupancy,
+  broadcastTicketStatus,
+  createHardwareAlert,
+} = require('./admin/helpers');
 
 const getAdminStats = async (req, res) => {
   try {
