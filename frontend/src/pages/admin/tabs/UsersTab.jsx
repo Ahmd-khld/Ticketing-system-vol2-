@@ -13,7 +13,6 @@ const UsersTab = ({ isSuperAdmin }) => {
   const [userPage, setUserPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
-  const [isUserManagementExpanded, setIsUserManagementExpanded] = useState(true);
 
   const fetchUsers = async (page = 1) => {
     const token = localStorage.getItem('token');
@@ -162,10 +161,7 @@ const UsersTab = ({ isSuperAdmin }) => {
 
   return (
     <div className="mb-10 bg-white dark:bg-gray-800 rounded-[40px] shadow-2xl border border-smart-light/10 dark:border-gray-700 overflow-hidden transition-all duration-300">
-      <div
-        className="bg-smart-bg dark:bg-gray-900 px-8 py-6 border-b border-smart-light/10 flex justify-between items-center cursor-pointer hover:bg-smart-bg/80 dark:hover:bg-gray-800 transition-colors"
-        onClick={() => setIsUserManagementExpanded(!isUserManagementExpanded)}
-      >
+      <div className="bg-smart-bg dark:bg-gray-900 px-8 py-6 border-b border-smart-light/10 flex justify-between items-center cursor-default">
         <h2 className="text-xl font-black text-smart-dark dark:text-white flex items-center tracking-tighter uppercase italic select-none">
           <svg className="w-6 h-6 mr-3 text-smart-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
@@ -186,20 +182,10 @@ const UsersTab = ({ isSuperAdmin }) => {
             Export CSV
           </motion.button>
           <span className="text-xs font-bold mr-4 uppercase tracking-widest">{totalUsersCount} Total Users</span>
-          <motion.svg 
-            animate={{ rotate: isUserManagementExpanded ? 180 : 0 }}
-            className="w-6 h-6" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-          </motion.svg>
         </div>
       </div>
 
-      {isUserManagementExpanded && (
-        <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden">
           <div className="bg-smart-bg/30 dark:bg-gray-900/30 px-8 py-5 border-b border-smart-light/10 flex flex-col md:flex-row gap-4 justify-between items-center">
             <div className="relative w-full md:max-w-md">
               <input
@@ -324,7 +310,6 @@ const UsersTab = ({ isSuperAdmin }) => {
             </div>
           )}
         </div>
-      )}
     </div>
   );
 };

@@ -14,7 +14,6 @@ const NetworkAccessTab = ({ isSuperAdmin }) => {
   // Whitelist State
   const [whitelistedIPs, setWhitelistedIPs] = useState([]);
   const [totalWhitelistedIPs, setTotalWhitelistedIPs] = useState(0);
-  const [isWhitelistExpanded, setIsWhitelistExpanded] = useState(true);
   const [newWhitelistIp, setNewWhitelistIp] = useState('');
   const [newWhitelistMac, setNewWhitelistMac] = useState('');
   const [newWhitelistDesc, setNewWhitelistDesc] = useState('');
@@ -29,7 +28,6 @@ const NetworkAccessTab = ({ isSuperAdmin }) => {
   const [totalBannedIPsPages, setTotalBannedIPsPages] = useState(1);
   const [totalBannedIPsCount, setTotalBannedIPsCount] = useState(0);
   const [isLoadingBannedIPs, setIsLoadingBannedIPs] = useState(false);
-  const [isBannedIPsExpanded, setIsBannedIPsExpanded] = useState(true);
   const [bannedIPsSearchQuery, setBannedIPsSearchQuery] = useState('');
 
   const fetchWhitelistedIPs = async (page = 1) => {
@@ -224,7 +222,7 @@ const NetworkAccessTab = ({ isSuperAdmin }) => {
             )}
           </AnimatePresence>
           
-          <div className="bg-smart-bg dark:bg-gray-900 px-8 py-6 border-b border-smart-light/10 flex justify-between items-center cursor-default hover:bg-smart-bg/80 dark:hover:bg-gray-800 transition-colors" onClick={() => setIsWhitelistExpanded(!isWhitelistExpanded)}>
+          <div className="bg-smart-bg dark:bg-gray-900 px-8 py-6 border-b border-smart-light/10 flex justify-between items-center cursor-default">
             <h2 className="text-xl font-black text-smart-dark dark:text-white flex items-center tracking-tighter uppercase italic select-none">
               <svg className="w-6 h-6 mr-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
               Admin IP Whitelist
@@ -235,10 +233,8 @@ const NetworkAccessTab = ({ isSuperAdmin }) => {
                 Export CSV
               </motion.button>
               <span className="text-xs font-bold mr-4 uppercase tracking-widest">{totalWhitelistedIPs} Allowed IPs</span>
-              <motion.svg animate={{ rotate: isWhitelistExpanded ? 180 : 0 }} className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></motion.svg>
             </div>
           </div>
-          {isWhitelistExpanded && (
             <div className="p-8">
               <div className="mb-8 p-6 bg-smart-bg dark:bg-gray-900 rounded-3xl border border-smart-light/10">
                 <h3 className="text-xs font-black text-smart-dark dark:text-white uppercase tracking-widest mb-4 flex items-center">
@@ -323,7 +319,6 @@ const NetworkAccessTab = ({ isSuperAdmin }) => {
                 </div>
               )}
             </div>
-          )}
         </div>
       )}
 
@@ -345,7 +340,7 @@ const NetworkAccessTab = ({ isSuperAdmin }) => {
             )}
           </AnimatePresence>
           
-          <div className="bg-smart-bg dark:bg-gray-900 px-8 py-6 border-b border-smart-light/10 flex justify-between items-center cursor-default hover:bg-smart-bg/80 dark:hover:bg-gray-800 transition-colors" onClick={() => setIsBannedIPsExpanded(!isBannedIPsExpanded)}>
+          <div className="bg-smart-bg dark:bg-gray-900 px-8 py-6 border-b border-smart-light/10 flex justify-between items-center cursor-default">
             <h2 className="text-xl font-black text-smart-dark dark:text-white flex items-center tracking-tighter uppercase italic select-none">
               <svg className="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
               Banned IP Addresses
@@ -356,10 +351,8 @@ const NetworkAccessTab = ({ isSuperAdmin }) => {
                 Export CSV
               </motion.button>
               <span className="text-xs font-bold mr-4 uppercase tracking-widest">{totalBannedIPsCount} Banned</span>
-              <motion.svg animate={{ rotate: isBannedIPsExpanded ? 180 : 0 }} className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></motion.svg>
             </div>
           </div>
-          {isBannedIPsExpanded && (
             <div className="p-8">
               <div className="bg-smart-bg/30 dark:bg-gray-900/30 px-8 py-5 border-b border-smart-light/10 flex flex-col md:flex-row gap-4 justify-between items-center mb-4 rounded-t-3xl">
                 <div className="relative w-full md:max-w-md">
@@ -421,7 +414,6 @@ const NetworkAccessTab = ({ isSuperAdmin }) => {
                 </div>
               )}
             </div>
-          )}
         </div>
       )}
     </div>
