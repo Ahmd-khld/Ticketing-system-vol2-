@@ -106,10 +106,8 @@ const HardwareTab = () => {
     connectSocket();
     fetchInitialTelemetry();
 
-    // 2. Setup fallback polling (every 10 seconds)
-    const pollInterval = setInterval(() => {
-      fetchInitialTelemetry();
-    }, 10000);
+    // Socket connection handles real-time updates now. No HTTP polling needed.
+
 
     // 3. Setup socket listeners
     const handleConnect = () => {
@@ -142,7 +140,6 @@ const HardwareTab = () => {
 
     return () => {
       clearInterval(connInterval);
-      clearInterval(pollInterval);
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
       socket.off('telemetryUpdate', handleTelemetryUpdate);

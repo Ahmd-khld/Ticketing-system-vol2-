@@ -493,7 +493,7 @@ const checkout = async (req, res) => {
           if (isCashPayment && savedTickets.length > 0) {
             const populatedTickets = await Ticket.find({
               _id: { $in: savedTickets.map((t) => t._id) },
-            }).populate('userId', 'name email phone');
+            }).populate('userId', 'name email phone').lean();
 
             populatedTickets.forEach((t) => {
               io.to('admin-room').emit('newCashTicket', t);

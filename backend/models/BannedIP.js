@@ -18,4 +18,6 @@ const bannedIPSchema = new mongoose.Schema(
   }
 );
 
+bannedIPSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('BannedIP', bannedIPSchema);

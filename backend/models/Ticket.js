@@ -75,6 +75,7 @@ const ticketSchema = new mongoose.Schema(
 ticketSchema.index({ validFrom: 1, subscriptionPlan: 1, status: 1 });
 ticketSchema.index({ status: 1, updatedAt: 1 });
 ticketSchema.index({ ticketType: 1, subscriptionPlan: 1 });
+ticketSchema.index({ createdAt: -1 });
 
 // Query function to count tickets grouped by date for the current week window
 ticketSchema.statics.countTicketsByDateRange = async function (from, to) {

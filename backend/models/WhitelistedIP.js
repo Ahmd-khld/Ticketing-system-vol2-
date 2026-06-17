@@ -26,4 +26,6 @@ const whitelistedIPSchema = new mongoose.Schema(
   }
 );
 
+whitelistedIPSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('WhitelistedIP', whitelistedIPSchema);
