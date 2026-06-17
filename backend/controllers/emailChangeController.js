@@ -79,8 +79,8 @@ const initiateEmailChange = async (req, res) => {
       subject: 'Security code to change your email address',
       html: otpEmailHtml(otp, 'as a two-factor security check to change your account email address'),
     });
-    if (result.status === 'failed') {
-      return res.status(502).json({ message: 'Could not send the security code. Please try again.' });
+    if (result.status !== 'success') {
+      return res.status(502).json({ message: 'Could not send the security code. Please verify email configuration.' });
     }
 
     return res.json({ message: 'A two-factor security code has been sent to your current email address.' });
@@ -177,8 +177,8 @@ const setNewEmail = async (req, res) => {
       subject: 'Verify your new email address',
       html: otpEmailHtml(otp, 'to verify your new email address'),
     });
-    if (result.status === 'failed') {
-      return res.status(502).json({ message: 'Could not send a code to the new address. Please try again.' });
+    if (result.status !== 'success') {
+      return res.status(502).json({ message: 'Could not send a code to the new address. Please verify email configuration.' });
     }
 
     return res.json({ message: 'A verification code has been sent to your new email address.' });

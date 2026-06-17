@@ -66,7 +66,7 @@ const Profile = () => {
     const token = localStorage.getItem('token');
     socket.auth = { token };
     socket.connect();
-    
+
     socket.on('connect', () => {
       console.log('[Socket Debug] Connected to server. Socket ID:', socket.id);
       socket.emit('joinUserRoom', String(user._id));
@@ -77,19 +77,19 @@ const Profile = () => {
       console.log("WebSocket payload received:", payload);
       const updatedTicketData = payload.ticket || {};
       const targetId = String(payload.ticketId || updatedTicketData._id);
-      
+
       if (!targetId) return;
 
       // UPDATE LOCAL STATE IMMEDIATELY FOR INSTANT FEEDBACK
       setTickets((prev) => {
         const index = prev.findIndex((t) => String(t._id) === targetId);
-        
+
         if (index !== -1) {
           console.log('[Socket Debug] Updating existing ticket via state injection at index:', index);
           const updated = [...prev];
-          updated[index] = { 
-            ...updated[index], 
-            ...updatedTicketData, 
+          updated[index] = {
+            ...updated[index],
+            ...updatedTicketData,
             status: payload.status || updatedTicketData.status || updated[index].status,
             paymentStatus: payload.paymentStatus || updatedTicketData.paymentStatus || updated[index].paymentStatus
           };
@@ -323,7 +323,7 @@ const Profile = () => {
 
   const handleDownloadTicket = async () => {
     if (!ticketRef.current) return;
-    
+
     try {
       const canvas = await html2canvas(ticketRef.current, {
         backgroundColor: '#0B4228', // Matches smart-dark primary color
@@ -331,7 +331,7 @@ const Profile = () => {
         logging: false,
         useCORS: true,
       });
-      
+
       const image = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.href = image;
@@ -371,19 +371,19 @@ const Profile = () => {
     const token = localStorage.getItem('token');
     try {
       const otpCode = deleteOtp.join('');
-      const response = await api.post('/users/confirm-deletion', 
-        { password: deletePassword, otp: otpCode }, 
+      const response = await api.post('/users/confirm-deletion',
+        { password: deletePassword, otp: otpCode },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       setUser(prev => ({ ...prev, deletionDate: response.data.deletionDate }));
       setShowDeleteModal(false);
       setDeletePassword('');
       setDeleteOtp(['', '', '', '', '', '']);
       setDeleteStep(1);
-      
+
       showModal('Account scheduled for deletion. You have 7 days to undo this.', 'Scheduled', 'success');
-      
+
       // Force logout and redirect to landing page
       setTimeout(() => {
         localStorage.removeItem('token');
@@ -447,13 +447,13 @@ const Profile = () => {
               <div className="w-12 h-12 md:w-16 md:h-16 bg-smart-light/10 rounded-full flex items-center justify-center text-smart-light font-black text-xl md:text-2xl uppercase shadow-inner border border-smart-light/20 shrink-0">
                 {user?.name?.charAt(0) || 'U'}
               </div>
-              <div className="overflow-hidden">
-                <h2 className="text-lg md:text-xl font-black capitalize text-smart-dark dark:text-white italic truncate">
+              <div className="flex-1 min-w-0 break-words">
+                <h2 className="text-lg md:text-xl font-black capitalize text-smart-dark dark:text-white italic leading-tight mb-1">
                   {user?.name}
                 </h2>
-                <p className="text-xs md:text-sm text-smart-gray dark:text-gray-400 font-medium">
+                <span className="inline-block px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-gray-100 dark:bg-gray-700 text-smart-gray dark:text-gray-300 border border-gray-200 dark:border-gray-600">
                   {user?.role}
-                </p>
+                </span>
               </div>
             </div>
 
@@ -495,7 +495,7 @@ const Profile = () => {
                   </p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={handleCancelDeletion}
                 className="px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-xs uppercase tracking-widest transition-all shadow-lg hover:shadow-red-900/20"
               >
@@ -512,102 +512,117 @@ const Profile = () => {
                   Personal Information
                 </h2>
 
-              {message && (
-                <div
-                  className={`p-4 md:p-5 mb-6 md:mb-8 rounded-2xl font-bold text-xs md:text-sm shadow-sm ${message.includes('Updated') ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'}`}
-                >
-                  {message}
-                </div>
-              )}
+                {message && (
+                  <div
+                    className={`p-4 md:p-5 mb-6 md:mb-8 rounded-2xl font-bold text-xs md:text-sm shadow-sm ${message.includes('Updated') ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'}`}
+                  >
+                    {message}
+                  </div>
+                )}
 
-              <form onSubmit={handleUpdateInfo} className="space-y-4 md:space-y-6 max-w-2xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <form onSubmit={handleUpdateInfo} className="space-y-4 md:space-y-6 max-w-2xl">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    <div>
+                      <label className="block text-[10px] md:text-sm font-extrabold text-smart-dark dark:text-white mb-2 uppercase tracking-wide">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        value={name}
+                        readOnly
+                        disabled
+                        title="Your name cannot be changed"
+                        className="w-full px-4 md:px-5 py-3 md:py-4 rounded-xl border border-gray-200 dark:border-gray-600 outline-none bg-gray-100 dark:bg-gray-800 font-medium text-sm md:text-base text-smart-gray dark:text-gray-400 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] md:text-sm font-extrabold text-smart-dark dark:text-white mb-2 uppercase tracking-wide">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full px-4 md:px-5 py-3 md:py-4 rounded-xl border border-gray-200 dark:border-gray-600 focus:ring-4 focus:ring-smart-light/20 focus:border-smart-light outline-none transition bg-smart-bg dark:bg-gray-700 focus:bg-white dark:focus:bg-gray-600 font-medium text-sm md:text-base text-smart-dark dark:text-white"
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-[10px] md:text-sm font-extrabold text-smart-dark dark:text-white mb-2 uppercase tracking-wide">
-                      Full Name <span className="text-smart-gray dark:text-gray-500 normal-case font-medium">(cannot be changed)</span>
+                      Phone Number
                     </label>
                     <input
-                      type="text"
-                      value={name}
+                      type="tel"
+                      value={phone}
                       readOnly
                       disabled
-                      title="Your name cannot be changed"
-                      className="w-full px-4 md:px-5 py-3 md:py-4 rounded-xl border border-gray-200 dark:border-gray-600 outline-none bg-gray-100 dark:bg-gray-800 font-medium text-sm md:text-base text-smart-gray dark:text-gray-400 cursor-not-allowed"
+                      title="Your phone number cannot be changed"
+                      className="w-full sm:w-[280px] px-4 md:px-5 py-3 md:py-4 rounded-xl border border-gray-200 dark:border-gray-600 outline-none bg-gray-100 dark:bg-gray-800 font-medium text-sm md:text-base text-smart-gray dark:text-gray-400 cursor-not-allowed"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] md:text-sm font-extrabold text-smart-dark dark:text-white mb-2 uppercase tracking-wide">
-                      Email Address
-                    </label>
+
+                  <div className="flex items-center p-4 md:p-5 bg-smart-bg dark:bg-gray-700 rounded-2xl border border-smart-light/10 max-w-md">
                     <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 md:px-5 py-3 md:py-4 rounded-xl border border-gray-200 dark:border-gray-600 focus:ring-4 focus:ring-smart-light/20 focus:border-smart-light outline-none transition bg-smart-bg dark:bg-gray-700 focus:bg-white dark:focus:bg-gray-600 font-medium text-sm md:text-base text-smart-dark dark:text-white"
+                      type="checkbox"
+                      id="disability"
+                      checked={hasDisability}
+                      onChange={(e) => setHasDisability(e.target.checked)}
+                      className="w-5 h-5 md:w-6 md:h-6 text-smart-light border-gray-300 dark:border-gray-500 rounded focus:ring-smart-light cursor-pointer"
                     />
+                    <div className="ml-3 md:ml-4">
+                      <label
+                        htmlFor="disability"
+                        className="block text-xs md:text-sm font-black text-smart-dark dark:text-white cursor-pointer italic"
+                      >
+                        Require accessibility features
+                      </label>
+                      <p className="text-[10px] md:text-xs text-smart-gray dark:text-gray-400 font-medium mt-1">
+                        Wheelchair access, prioritized seating, etc.
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-[10px] md:text-sm font-extrabold text-smart-dark dark:text-white mb-2 uppercase tracking-wide">
-                    Phone Number <span className="text-smart-gray dark:text-gray-500 normal-case font-medium">(cannot be changed)</span>
-                  </label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    readOnly
-                    disabled
-                    title="Your phone number cannot be changed"
-                    className="w-full px-4 md:px-5 py-3 md:py-4 rounded-xl border border-gray-200 dark:border-gray-600 outline-none bg-gray-100 dark:bg-gray-800 font-medium max-w-md text-sm md:text-base text-smart-gray dark:text-gray-400 cursor-not-allowed"
-                  />
-                </div>
+                  <button
+                    type="submit"
+                    className="w-full md:w-auto mt-6 md:mt-8 px-10 py-4 bg-smart-light hover:bg-smart-dark text-white rounded-full font-black text-base md:text-lg transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 uppercase tracking-widest"
+                  >
+                    Save Changes
+                  </button>
+                </form>
+              </div>
 
-                <div className="flex items-center p-4 md:p-5 bg-smart-bg dark:bg-gray-700 rounded-2xl border border-smart-light/10 max-w-md">
-                  <input
-                    type="checkbox"
-                    id="disability"
-                    checked={hasDisability}
-                    onChange={(e) => setHasDisability(e.target.checked)}
-                    className="w-5 h-5 md:w-6 md:h-6 text-smart-light border-gray-300 dark:border-gray-500 rounded focus:ring-smart-light cursor-pointer"
-                  />
-                  <div className="ml-3 md:ml-4">
-                    <label
-                      htmlFor="disability"
-                      className="block text-xs md:text-sm font-black text-smart-dark dark:text-white cursor-pointer italic"
-                    >
-                      Require accessibility features
-                    </label>
-                    <p className="text-[10px] md:text-xs text-smart-gray dark:text-gray-400 font-medium mt-1">
-                      Wheelchair access, prioritized seating, etc.
+              {/* Luxury Account Closure Trigger - Danger Zone Card */}
+              {!user.deletionDate && (
+                <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 md:p-10 border border-red-100 dark:border-red-900/30 animate-fade-in-up flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                  <div>
+                    <h3 className="text-xl font-black text-red-600 dark:text-red-400 italic mb-2">Danger Zone</h3>
+                    <p className="text-xs font-bold text-smart-gray dark:text-gray-400 uppercase tracking-widest">
+                      Permanently close your account and delete all data.
                     </p>
                   </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full md:w-auto mt-6 md:mt-8 px-10 py-4 bg-smart-light hover:bg-smart-dark text-white rounded-full font-black text-base md:text-lg transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 uppercase tracking-widest"
-                >
-                  Save Changes
-                </button>
-              </form>
-
-              {/* Luxury Account Closure Trigger */}
-              {!user.deletionDate && (
-                <div className="mt-24 pt-12 border-t border-gray-50 dark:border-gray-800/30 flex justify-center">
                   <button
                     onClick={() => setShowDeleteModal(true)}
-                    className="group relative px-12 py-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-red-500/30 transition-all duration-500 shadow-sm hover:shadow-xl active:scale-95 flex items-center gap-4 overflow-hidden"
+                    className="group relative px-8 py-4 rounded-2xl bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border border-red-200 dark:border-red-900/50 hover:border-red-500 transition-all duration-500 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(239,68,68,0.2)] active:scale-95 flex items-center gap-4 overflow-hidden shrink-0 w-full md:w-auto"
                   >
-                    <div className="absolute inset-0 bg-red-500/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-                    <div className="w-2 h-2 rounded-full bg-gray-200 dark:bg-gray-700 group-hover:bg-red-500 transition-colors duration-500"></div>
-                    <span className="relative text-[10px] font-black uppercase tracking-[0.4em] text-gray-400 group-hover:text-red-500 transition-colors duration-500 italic">
+                    {/* Animated background gradient on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-red-500/0 via-red-500/10 to-red-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out"></div>
+
+                    {/* Icon container */}
+                    <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-red-50 dark:bg-red-500/10 group-hover:bg-red-100 dark:group-hover:bg-red-500/20 transition-colors duration-500 border border-transparent group-hover:border-red-200 dark:group-hover:border-red-500/30 shrink-0">
+                      <svg className="w-4 h-4 text-red-500 transition-transform duration-500 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </div>
+
+                    {/* Text */}
+                    <span className="relative text-xs font-black uppercase tracking-[0.2em] text-red-600 dark:text-red-400 group-hover:text-red-700 dark:group-hover:text-red-300 transition-colors duration-500 whitespace-nowrap text-center flex-1 md:flex-none">
                       Close Account
                     </span>
                   </button>
                 </div>
               )}
             </div>
-          </div>
           )}
 
           {/* HISTORY TAB */}
@@ -639,11 +654,10 @@ const Profile = () => {
                     <button
                       key={status}
                       onClick={() => setHistoryFilter(status)}
-                      className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                        historyFilter === status
-                          ? 'bg-smart-light text-white shadow-sm'
-                          : 'text-smart-gray dark:text-gray-400 hover:text-smart-dark dark:hover:text-white'
-                      }`}
+                      className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${historyFilter === status
+                        ? 'bg-smart-light text-white shadow-sm'
+                        : 'text-smart-gray dark:text-gray-400 hover:text-smart-dark dark:hover:text-white'
+                        }`}
                     >
                       {status === 'pending' ? 'Pending Cash' : status}
                     </button>
@@ -700,93 +714,92 @@ const Profile = () => {
                       .map((ticket) => {
                         const safeStatus = ticket.status ? ticket.status.toLowerCase() : '';
                         return (
-                      <div
-                        key={ticket._id}
-                        className="bg-white dark:bg-gray-700 rounded-3xl shadow-md border border-smart-light/20 p-8 hover:shadow-lg transition-all duration-300 animate-fade-in flex flex-col justify-between h-full"
-                      >
-                        <div className="flex justify-between items-start mb-6">
-                          <div>
-                            <span
-                              className={`inline-block px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-sm ${
-                                safeStatus === 'active' && ticket.paymentStatus?.toUpperCase() !== 'PENDING'
-                                  ? 'bg-smart-light/20 text-smart-dark dark:text-smart-light border border-smart-light/30'
-                                  : (ticket.paymentMethod === 'CASH' && ticket.paymentStatus?.toUpperCase() === 'PENDING')
-                                    ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
-                                    : safeStatus === 'used'
-                                      ? 'bg-gray-100 dark:bg-gray-600 text-smart-gray dark:text-gray-400 border border-gray-200 dark:border-gray-500 opacity-60'
-                                      : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 border border-red-100 dark:border-red-900 opacity-60'
-                              }`}
-                            >
-                              {(ticket.paymentMethod === 'CASH' && ticket.paymentStatus?.toUpperCase() === 'PENDING') ? 'Pending Cash' : ticket.status}
-                            </span>
-                            <h3 className="text-2xl font-black text-smart-dark dark:text-white capitalize mt-3 italic">
-                              {ticket.ticketType} Pass
-                            </h3>
-                            <p className="text-sm font-bold text-smart-gray dark:text-gray-400 uppercase tracking-widest mt-1">
-                              {ticket.subscriptionPlan} Subscription
-                            </p>
-                          </div>
-                          <div className="text-right flex flex-col items-end">
-                            <p className="text-3xl font-black text-smart-dark dark:text-smart-glow mb-2">
-                              {ticket.price}{' '}
-                              <span className="text-sm text-smart-gray dark:text-gray-400 italic">
-                                EGP
-                              </span>
-                            </p>
-                            {ticket.isPromoApplied && (
-                              <div className="mb-4 text-right">
-                                <p className="text-[10px] font-black text-gray-400 line-through">
-                                  WAS {ticket.originalPrice} EGP
-                                </p>
-                                <p className="text-[10px] font-black text-green-500 uppercase tracking-tighter">
-                                  (Promo Applied) - {ticket.promoCodeName}
+                          <div
+                            key={ticket._id}
+                            className="bg-white dark:bg-gray-700 rounded-3xl shadow-md border border-smart-light/20 p-8 hover:shadow-lg transition-all duration-300 animate-fade-in flex flex-col justify-between h-full"
+                          >
+                            <div className="flex justify-between items-start mb-6">
+                              <div>
+                                <span
+                                  className={`inline-block px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-sm ${safeStatus === 'active' && ticket.paymentStatus?.toUpperCase() !== 'PENDING'
+                                    ? 'bg-smart-light/20 text-smart-dark dark:text-smart-light border border-smart-light/30'
+                                    : (ticket.paymentMethod === 'CASH' && ticket.paymentStatus?.toUpperCase() === 'PENDING')
+                                      ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
+                                      : safeStatus === 'used'
+                                        ? 'bg-gray-100 dark:bg-gray-600 text-smart-gray dark:text-gray-400 border border-gray-200 dark:border-gray-500 opacity-60'
+                                        : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 border border-red-100 dark:border-red-900 opacity-60'
+                                    }`}
+                                >
+                                  {(ticket.paymentMethod === 'CASH' && ticket.paymentStatus?.toUpperCase() === 'PENDING') ? 'Pending Cash' : ticket.status}
+                                </span>
+                                <h3 className="text-2xl font-black text-smart-dark dark:text-white capitalize mt-3 italic">
+                                  {ticket.ticketType} Pass
+                                </h3>
+                                <p className="text-sm font-bold text-smart-gray dark:text-gray-400 uppercase tracking-widest mt-1">
+                                  {ticket.subscriptionPlan} Subscription
                                 </p>
                               </div>
-                            )}
+                              <div className="text-right flex flex-col items-end">
+                                <p className="text-3xl font-black text-smart-dark dark:text-smart-glow mb-2">
+                                  {ticket.price}{' '}
+                                  <span className="text-sm text-smart-gray dark:text-gray-400 italic">
+                                    EGP
+                                  </span>
+                                </p>
+                                {ticket.isPromoApplied && (
+                                  <div className="mb-4 text-right">
+                                    <p className="text-[10px] font-black text-gray-400 line-through">
+                                      WAS {ticket.originalPrice} EGP
+                                    </p>
+                                    <p className="text-[10px] font-black text-green-500 uppercase tracking-tighter">
+                                      (Promo Applied) - {ticket.promoCodeName}
+                                    </p>
+                                  </div>
+                                )}
+                                {safeStatus === 'active' && (
+                                  <button
+                                    onClick={() => setSelectedQrTicket(ticket)}
+                                    className="text-xs bg-smart-light hover:bg-smart-dark text-white font-black uppercase tracking-widest py-3 px-6 rounded-xl shadow-lg transition-all active:scale-95"
+                                  >
+                                    Show QR Code
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
                             {safeStatus === 'active' && (
-                              <button
-                                onClick={() => setSelectedQrTicket(ticket)}
-                                className="text-xs bg-smart-light hover:bg-smart-dark text-white font-black uppercase tracking-widest py-3 px-6 rounded-xl shadow-lg transition-all active:scale-95"
-                              >
-                                Show QR Code
-                              </button>
+                              <div className="flex gap-3 mt-auto mb-4">
+                                {ticket.subscriptionPlan === 'one-time' && !ticket.hasRescheduled && (
+                                  <button
+                                    onClick={() => handleRescheduleTicket(ticket._id)}
+                                    className="text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                                  >
+                                    Change Date
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleCancelTicket(ticket._id)}
+                                  className="text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                >
+                                  Cancel & Refund
+                                </button>
+                              </div>
                             )}
-                          </div>
-                        </div>
 
-                        {safeStatus === 'active' && (
-                          <div className="flex gap-3 mt-auto mb-4">
-                            {ticket.subscriptionPlan === 'one-time' && !ticket.hasRescheduled && (
-                              <button
-                                onClick={() => handleRescheduleTicket(ticket._id)}
-                                className="text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
-                              >
-                                Change Date
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleCancelTicket(ticket._id)}
-                              className="text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                            >
-                              Cancel & Refund
-                            </button>
+                            <div className="flex justify-between items-center text-sm font-medium text-smart-gray/50 dark:text-gray-500 pt-4 border-t border-gray-100 dark:border-gray-600">
+                              <p className="font-mono text-xs">ID: {ticket._id.slice(-8)}</p>
+                              <p>
+                                {new Date(ticket.validFrom || ticket.createdAt).toLocaleDateString(undefined, {
+                                  weekday: 'short',
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                })}
+                              </p>
+                            </div>
                           </div>
-                        )}
-
-                        <div className="flex justify-between items-center text-sm font-medium text-smart-gray/50 dark:text-gray-500 pt-4 border-t border-gray-100 dark:border-gray-600">
-                          <p className="font-mono text-xs">ID: {ticket._id.slice(-8)}</p>
-                          <p>
-                            {new Date(ticket.validFrom || ticket.createdAt).toLocaleDateString(undefined, {
-                              weekday: 'short',
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
                   </div>
                 )}
               </div>
@@ -901,17 +914,17 @@ const Profile = () => {
 
       {/* QR MODAL OVERLAY */}
       {selectedQrTicket && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-6 animate-fade-in"
           onClick={() => setSelectedQrTicket(null)}
         >
-          <div 
+          <div
             ref={ticketRef}
             className="bg-white dark:bg-gray-800 w-full max-w-[350px] rounded-[40px] shadow-2xl overflow-hidden border border-smart-light/20 transform transition-all animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-smart-dark p-6 border-b border-white/10 text-center relative">
-              <button 
+              <button
                 onClick={() => setSelectedQrTicket(null)}
                 className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"
               >
@@ -985,7 +998,7 @@ const Profile = () => {
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-xl p-6 animate-fade-in">
           <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden border border-red-500/20 transform transition-all animate-scale-up">
             <div className="bg-red-600 p-8 text-center relative">
-              <button 
+              <button
                 onClick={() => {
                   setShowDeleteModal(false);
                   setDeleteStep(1);

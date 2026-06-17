@@ -47,7 +47,7 @@ router.post('/register', validateRequest(registerValidationSchema), async (req, 
       // Generate and send OTP
       const otpCode = await issueOtp(email);
 
-      await sendEmail({
+      const emailResult = await sendEmail({
         to: email,
         subject: 'Verify Your Email - Smart Garden',
         html: buildOtpEmail({
@@ -57,6 +57,12 @@ router.post('/register', validateRequest(registerValidationSchema), async (req, 
           intro: 'Thank you for registering. Please use the following code to verify your email address:',
         }),
       });
+
+      if (emailResult.status !== 'success') {
+        // Rollback user creation if email fails to send
+        await User.findByIdAndDelete(user._id);
+        return res.status(502).json({ message: 'Could not send verification email. Please verify email configuration.' });
+      }
 
       res.status(201).json({
         _id: user._id,
@@ -181,7 +187,7 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
         // Generate and send NEW OTP on login attempt if not verified
         const otpCode = await issueOtp(user.email);
 
-        await sendEmail({
+        const emailResult = await sendEmail({
           to: user.email,
           subject: 'Action Required: Verify Your Email - Smart Garden',
           html: buildOtpEmail({
@@ -191,6 +197,10 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
             intro: 'You attempted to login but your email is not yet verified. Please use the following code to complete your verification:',
           }),
         });
+
+        if (emailResult.status !== 'success') {
+          return res.status(502).json({ message: 'Could not send verification email. Please verify email configuration.' });
+        }
 
         return res.status(401).json({
           message: 'Email not verified. A new verification code has been sent to your email.',
@@ -212,7 +222,7 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
         // Generate and send 2FA OTP
         const otpCode = await issueOtp(user.email);
 
-        await sendEmail({
+        const emailResult = await sendEmail({
           to: user.email,
           subject: 'Security Code - Smart Garden 2FA',
           html: buildOtpEmail({
@@ -222,6 +232,10 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
             intro: `${isForced2FA ? 'Your account requires 2FA for every login.' : "It's been a while since your last login."} For your security, please use the following code to complete your login:`,
           }),
         });
+
+        if (emailResult.status !== 'success') {
+          return res.status(502).json({ message: 'Could not send 2FA email. Please verify email configuration.' });
+        }
 
         // Reset attempts when a new 2FA is triggered to allow fresh start
         user.otpAttempts = 0;
