@@ -77,7 +77,7 @@ router.post('/risk-register/resolve-insider/:riskId', requireSuperAdmin, resolve
 router.post('/unlock-scanner', requireAdmin, unlockScanner);
 router.post('/backup', requireSuperAdmin, createBackup);
 router.get('/backups', requireAdmin, getBackups);
-router.get('/backups/:filename', requireAdmin, downloadBackup);
+router.get('/backups/download/:filename', requireAdmin, downloadBackup);
 router.delete('/backups/:filename', requireSuperAdmin, deleteBackup);
 router.post('/backups/:filename/restore', requireSuperAdmin, restoreBackup);
 

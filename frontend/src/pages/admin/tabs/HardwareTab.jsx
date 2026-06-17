@@ -331,12 +331,12 @@ const HardwareTab = () => {
             <div className={`w-3.5 h-3.5 rounded-full ${isConnected ? 'bg-green-500 animate-pulse shadow-[0_0_12px_rgba(34,197,94,0.8)]' : 'bg-gray-400 shadow-[0_0_12px_rgba(156,163,175,0.4)]'}`}></div>
             <div>
               <h2 className="text-2xl font-black text-smart-dark dark:text-white uppercase italic tracking-tighter flex items-center">
-                System Live Matrix (WebSocket)
+                Live Sensor Dashboard
                 <span className="ml-3 px-2 py-0.5 bg-green-500/20 text-green-500 text-[10px] rounded-md not-italic tracking-widest font-bold animate-pulse">LIVE FEED</span>
               </h2>
               {lastUpdated && (
                 <p className="text-[10px] font-black text-smart-gray dark:text-gray-500 uppercase tracking-[0.2em] mt-1">
-                  Last Pulse Received: {lastUpdated.toLocaleTimeString()}
+                  Last Updated: {lastUpdated.toLocaleTimeString()}
                 </p>
               )}
             </div>
@@ -698,16 +698,6 @@ const HardwareTab = () => {
               </div>
             )}
 
-            <div className="bg-smart-bg dark:bg-gray-900 p-6 border-t border-smart-light/10 flex justify-center items-center">
-              <motion.button 
-                whileHover={{ scale: 1.05, backgroundColor: '#047857' }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate('/admin/telemetry')} 
-                className="bg-green-600 text-white font-black text-[11px] py-3 px-8 rounded-xl transition-all uppercase tracking-widest shadow-lg shadow-green-900/20"
-              >
-                View Live Telemetry
-              </motion.button>
-            </div>
           </div>
         </motion.div>
       </div>

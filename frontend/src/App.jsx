@@ -8,7 +8,6 @@ import Payment from './pages/Payment';
 import About from './pages/About';
 import AdminHardwareAlerts from './pages/AdminHardwareAlerts';
 import AdminUserTickets from './pages/AdminUserTickets';
-import AdminTelemetry from './pages/AdminTelemetry';
 import AdminGRC from './pages/AdminGRC';
 import Profile from './pages/Profile';
 import ParkMap from './pages/ParkMap';
@@ -98,7 +97,6 @@ const AnimatedRoutes = ({ isSuperAdmin }) => {
 
           <Route path="/admin/alerts" element={<AdminRoute><AdminHardwareAlerts /></AdminRoute>} />
           <Route path="/admin/users/:userId/tickets" element={<AdminRoute><AdminUserTickets /></AdminRoute>} />
-          <Route path="/admin/telemetry" element={<AdminRoute><AdminTelemetry socket={socket} /></AdminRoute>} />
           <Route path="/admin/grc" element={<AdminRoute><AdminGRC /></AdminRoute>} />
 
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
