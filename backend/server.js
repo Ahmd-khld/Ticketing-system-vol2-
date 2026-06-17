@@ -4,6 +4,7 @@ const User = require('./models/User');
 const WhitelistedIP = require('./models/WhitelistedIP');
 const { initTicketCron } = require('./cron/ticketCron');
 const grcService = require('./utils/grcService');
+const { encryptDeterministic } = require('./utils/encryption');
 
 const PORT = process.env.PORT || 5000;
 

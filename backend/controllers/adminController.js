@@ -322,7 +322,7 @@ const getUsers = async (req, res) => {
     });
 
     const users = usersRaw.map((u) => ({
-      ...u,
+      ...u.toJSON(),
       ticketCount: countMap[u._id.toString()] || 0,
     }));
 

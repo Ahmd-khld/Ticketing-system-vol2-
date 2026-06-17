@@ -3,6 +3,7 @@ const Ticket = require('../models/Ticket');
 const { sendEmail } = require('../utils/emailService');
 const { issueOtp, consumeOtp } = require('../utils/otpService');
 const { buildOtpEmail } = require('../utils/otpEmail');
+const { encryptDeterministic } = require('../utils/encryption');
 
 const getUserProfile = async (req, res) => {
   try {
@@ -107,7 +108,7 @@ const deleteSavedCard = async (req, res) => {
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email });
 
     if (!user) {
       return res.status(404).json({ message: 'User with this email does not exist' });
@@ -139,7 +140,7 @@ const resetPassword = async (req, res) => {
   try {
     const { email, otp, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });

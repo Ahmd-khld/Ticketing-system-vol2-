@@ -80,10 +80,16 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'admin', 'sub-admin', 'customer', 'viewer'],
       default: 'user',
       get: decryptDeterministic,
       set: encryptDeterministic,
+      validate: {
+        validator: function(v) {
+          const decrypted = decryptDeterministic(v);
+          return ['user', 'admin', 'sub-admin', 'customer', 'viewer'].includes(decrypted);
+        },
+        message: props => `Invalid role assigned.`
+      }
     },
     permissions: {
       hardwareControl: { type: Boolean, default: false },
