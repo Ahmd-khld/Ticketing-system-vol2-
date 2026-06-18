@@ -148,7 +148,7 @@ router.post('/hardware/telemetry', async (req, res) => {
       return res.status(400).json({ message: 'Invalid JSON format', error: parseErr.message });
     }
 
-    const {
+    let {
       moisture,
       humidity,
       temperature,
@@ -158,6 +158,10 @@ router.post('/hardware/telemetry', async (req, res) => {
       pumpStatus,
       servoStatus
     } = payload;
+
+    // Convert string representations to numbers (Arduino sends them as strings)
+    if (typeof humidity === 'string') humidity = parseFloat(humidity);
+    if (typeof temperature === 'string') temperature = parseFloat(temperature);
 
     // Basic Validation
     if (
