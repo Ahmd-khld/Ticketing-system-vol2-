@@ -62,7 +62,7 @@ const generateMockData = async (io) => {
           { sensor: 'LDR', type: 'info', message: 'Simulation: Pathway lamps activated.' },
         ];
         const event = demoEvents[Math.floor(Math.random() * demoEvents.length)];
-        
+
         const timeString = new Date().toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
@@ -74,9 +74,9 @@ const generateMockData = async (io) => {
           sensor: event.sensor,
           timeString: timeString
         });
-        
+
         await newAlert.save();
-        
+
         io.to('admin-room').emit('hardwareAlert', {
           id: newAlert._id,
           time: timeString,
@@ -143,10 +143,23 @@ const checkAndGenerateAlerts = async (oldState, newState, io) => {
   }
 
   // Threshold: RGB Ultrasonic
-  if (oldState.rgbDistance > 5 && newState.rgbDistance <= 5) {
-    createAlert('RGB Ultrasonic', 'warning', `Smart Bin is nearly full (Distance: ${newState.rgbDistance}cm).`);
-  } else if (oldState.rgbDistance <= 5 && newState.rgbDistance > 5) {
-    createAlert('RGB Ultrasonic', 'success', `Smart Bin has been emptied (Distance: ${newState.rgbDistance}cm).`);
+  const getBinState = (distance) => {
+    if (distance <= 5) return 'full';
+    if (distance <= 10) return 'nearly_full';
+    return 'empty';
+  };
+
+  const oldBinState = getBinState(oldState.rgbDistance);
+  const newBinState = getBinState(newState.rgbDistance);
+
+  if (oldBinState !== newBinState) {
+    if (newBinState === 'full') {
+      createAlert('RGB Ultrasonic', 'need action', `Smart Bin is full (Distance: ${newState.rgbDistance}cm).`);
+    } else if (newBinState === 'nearly_full') {
+      createAlert('RGB Ultrasonic', 'warning', `Smart Bin is nearly full (Distance: ${newState.rgbDistance}cm).`);
+    } else if (newBinState === 'empty') {
+      createAlert('RGB Ultrasonic', 'success', `Smart Bin has been emptied (Distance: ${newState.rgbDistance}cm).`);
+    }
   }
 
   // Save and Emit all alerts
@@ -180,10 +193,10 @@ router.post('/hardware/debug', express.text({ type: '*/*' }), (req, res) => {
 // @desc    Receive telemetry from Arduino (Supports signature and raw body)
 router.post('/hardware/telemetry', async (req, res) => {
   console.log('[Telemetry] Inbound request from:', req.ip);
-  
+
   try {
     let rawBody = req.body;
-    
+
     // Log raw body for debugging parsing errors
     // If req.body is already an object (e.g. parsed by express.json), log it as JSON
     console.log('[Telemetry] Received Body:', typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody));
@@ -209,7 +222,7 @@ router.post('/hardware/telemetry', async (req, res) => {
       // Robust fix for Arduino sending '?' for floating point values
       // This happens when the Arduino's snprintf/dtostrf implementation fails or is misconfigured.
       const sanitizedJson = jsonPart.replace(/:\s*\?/g, ': 0');
-      
+
       if (sanitizedJson !== jsonPart) {
         console.warn('[Telemetry] Sanitized payload (replaced "?" with "0")');
       }
