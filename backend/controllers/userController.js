@@ -116,7 +116,7 @@ const forgotPassword = async (req, res) => {
 
     const otpCode = await issueOtp(email);
 
-    const emailResult = await sendEmail({
+    sendEmail({
       to: user.email,
       subject: 'Password Reset Verification Code',
       html: buildOtpEmail({
@@ -124,13 +124,9 @@ const forgotPassword = async (req, res) => {
         heading: 'Password Reset Code',
         intro: 'You requested to reset your password. Your verification code is:',
       }),
-    });
+    }).catch(err => console.error('Background email failed:', err.message));
 
-    if (emailResult.status === 'success') {
-      res.json({ message: 'Password reset code sent to email' });
-    } else {
-      res.status(500).json({ message: 'Failed to send reset code' });
-    }
+    res.json({ message: 'Password reset code sent to email' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -293,7 +289,7 @@ const requestAccountDeletion = async (req, res) => {
     // 2. Generate and Send OTP
     const otpCode = await issueOtp(user.email);
 
-    await sendEmail({
+    sendEmail({
       to: user.email,
       subject: 'Security Code: Account Deletion Request',
       html: buildOtpEmail({
@@ -303,7 +299,7 @@ const requestAccountDeletion = async (req, res) => {
         intro: 'We received a request to delete your Smart Garden account. To proceed, please use the following verification code:',
         note: 'Once confirmed, your account will be scheduled for deletion in 7 days. You can cancel any time before then from your profile. This code expires in 10 minutes.',
       }),
-    });
+    }).catch(err => console.error('Background email failed:', err.message));
 
     res.json({ message: 'Verification code sent to your email.' });
   } catch (error) {

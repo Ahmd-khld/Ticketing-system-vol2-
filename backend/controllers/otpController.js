@@ -12,7 +12,7 @@ const sendOTP = async (req, res) => {
 
     const otpCode = await issueOtp(email);
 
-    const emailResult = await sendEmail({
+    sendEmail({
       to: email,
       subject: 'Your Verification Code',
       html: buildOtpEmail({
@@ -20,13 +20,9 @@ const sendOTP = async (req, res) => {
         heading: 'Verification Code',
         intro: 'Your one-time password (OTP) for verification is:',
       }),
-    });
+    }).catch(err => logger.error('[OTP] Background email failed:', err.message));
 
-    if (emailResult.status === 'success') {
-      res.json({ message: 'OTP sent successfully' });
-    } else {
-      res.status(500).json({ message: 'Failed to send OTP email', error: emailResult.error });
-    }
+    res.json({ message: 'OTP sent successfully' });
   } catch (error) {
     logger.error('[OTP] sendOTP failed:', error.message);
     res.status(500).json({ message: error.message });

@@ -113,6 +113,7 @@ const userSchema = new mongoose.Schema(
       trialsUsed: { type: Number, default: 0 },
       lastPlayedMonth: { type: Number, default: () => new Date().getMonth() + 1 },
       lastPlayedYear: { type: Number, default: () => new Date().getFullYear() },
+      topScore: { type: Number, default: 0 },
     },
   },
   {

@@ -183,6 +183,12 @@ const GamePage = () => {
       fetchLeaderboard(); // Refresh scores so the user can see their rank update
     } catch (err) {
       console.error('Win Error:', err);
+      if (err.response && err.response.status === 400) {
+        setGameState('limit-reached');
+      } else {
+        alert('An error occurred while saving your score. Please try again later.');
+        setGameState('instructions');
+      }
     }
   };
 
@@ -205,6 +211,12 @@ const GamePage = () => {
       fetchLeaderboard(); // Refresh scores so the user can see their rank update
     } catch (err) {
       console.error('Lose Error:', err);
+      if (err.response && err.response.status === 400) {
+        setGameState('limit-reached');
+      } else {
+        alert('An error occurred while saving your score. Please try again later.');
+        setGameState('instructions');
+      }
     }
   };
 

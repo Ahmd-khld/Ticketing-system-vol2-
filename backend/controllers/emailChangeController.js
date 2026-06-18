@@ -74,14 +74,11 @@ const initiateEmailChange = async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    const result = await sendEmail({
+    sendEmail({
       to: user.email,
       subject: 'Security code to change your email address',
       html: otpEmailHtml(otp, 'as a two-factor security check to change your account email address'),
-    });
-    if (result.status !== 'success') {
-      return res.status(502).json({ message: 'Could not send the security code. Please verify email configuration.' });
-    }
+    }).catch(err => console.error('[EmailChange] Background email failed:', err.message));
 
     return res.json({ message: 'A two-factor security code has been sent to your current email address.' });
   } catch (error) {
@@ -172,14 +169,11 @@ const setNewEmail = async (req, res) => {
     request.step = 'verify-new';
     await request.save();
 
-    const result = await sendEmail({
+    sendEmail({
       to: newEmail,
       subject: 'Verify your new email address',
       html: otpEmailHtml(otp, 'to verify your new email address'),
-    });
-    if (result.status !== 'success') {
-      return res.status(502).json({ message: 'Could not send a code to the new address. Please verify email configuration.' });
-    }
+    }).catch(err => console.error('[EmailChange] Background email failed:', err.message));
 
     return res.json({ message: 'A verification code has been sent to your new email address.' });
   } catch (error) {

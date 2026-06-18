@@ -32,51 +32,43 @@ router.post('/register', validateRequest(registerValidationSchema), async (req, 
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    const user = await User.create({
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const pendingData = {
       name,
       email,
       phone,
-      password,
+      password: hashedPassword,
       age,
       hasDisability,
       role,
-      isVerified: false, // Explicitly set to false until OTP verification
+      isVerified: false,
+    };
+
+    // Generate and send OTP, storing pending data
+    const otpCode = await issueOtp(email, pendingData);
+
+    sendEmail({
+      to: email,
+      subject: 'Verify Your Email - Smart Garden',
+      html: buildOtpEmail({
+        otp: otpCode,
+        heading: 'Welcome to Smart Garden!',
+        greeting: `Hello ${name},`,
+        intro: 'Thank you for registering. Please use the following code to verify your email address:',
+      }),
+    }).catch(err => console.error('Background email failed:', err.message));
+
+    res.status(201).json({
+      name,
+      email,
+      phone,
+      hasDisability,
+      role,
+      isVerified: false,
+      message: 'Registration started. Please verify your email with the code sent.',
     });
-
-    if (user) {
-      // Generate and send OTP
-      const otpCode = await issueOtp(email);
-
-      const emailResult = await sendEmail({
-        to: email,
-        subject: 'Verify Your Email - Smart Garden',
-        html: buildOtpEmail({
-          otp: otpCode,
-          heading: 'Welcome to Smart Garden!',
-          greeting: `Hello ${name},`,
-          intro: 'Thank you for registering. Please use the following code to verify your email address:',
-        }),
-      });
-
-      if (emailResult.status !== 'success') {
-        // Rollback user creation if email fails to send
-        await User.findByIdAndDelete(user._id);
-        return res.status(502).json({ message: 'Could not send verification email. Please verify email configuration.' });
-      }
-
-      res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        hasDisability: user.hasDisability,
-        role: user.role,
-        isVerified: user.isVerified,
-        message: 'Registration successful. Please verify your email with the code sent.',
-      });
-    } else {
-      res.status(400).json({ message: 'Invalid user data' });
-    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -92,62 +84,64 @@ router.post('/verify-email', async (req, res) => {
       return res.status(400).json({ message: 'Email and OTP are required' });
     }
 
-    const user = await User.findOne({ email: email });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    const otpRecord = await consumeOtp(email, otp);
+    if (!otpRecord) {
+      return res.status(400).json({ message: `Invalid or expired verification code.` });
     }
 
-    if (user.deletionDate) {
-      return res.status(403).json({
-        message: 'Account is locked and scheduled for deletion due to too many failed attempts.',
-        isLocked: true,
+    // New Flow: Data exists in OTP record
+    if (otpRecord.registrationData) {
+      const regData = otpRecord.registrationData;
+      const user = await User.create({
+        name: regData.name,
+        email: regData.email,
+        phone: regData.phone,
+        password: regData.password, // already hashed in /register
+        age: regData.age,
+        hasDisability: regData.hasDisability,
+        role: regData.role,
+        isVerified: true,
+        lastLogin: new Date(),
+        otpAttempts: 0,
+        deletionDate: null,
+        isRestricted: false,
+        restrictionReason: '',
       });
-    }
 
-    const otpValid = await consumeOtp(email, otp);
-
-    if (otpValid) {
-      user.isVerified = true;
-      user.lastLogin = new Date(); // Record initial login upon verification
-      user.otpAttempts = 0;
-      user.deletionDate = null;
-      user.isRestricted = false;
-      user.restrictionReason = '';
-      await user.save();
-
-      res.json({
+      return res.json({
         message: 'Email verified successfully',
         isVerified: true,
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        token: generateToken(user._id, user.tokenVersion),
-      });
-    } else {
-      user.otpAttempts = (user.otpAttempts || 0) + 1;
-
-      if (user.otpAttempts >= 5) {
-        user.isRestricted = true;
-        user.restrictionReason =
-          'Too many failed verification attempts. Account locked for 30 days and scheduled for deletion.';
-        user.deletionDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-        await user.save();
-
-        return res.status(403).json({
-          message:
-            'Max attempts reached. Your account has been locked for 30 days and is scheduled for deletion.',
-          isLocked: true,
-        });
-      }
-
-      await user.save();
-      const remaining = 5 - user.otpAttempts;
-      res.status(400).json({
-        message: `Invalid or expired verification code. ${remaining} attempts remaining.`,
-        remainingAttempts: remaining,
+        token: generateToken(user._id, user.tokenVersion || 0),
       });
     }
+
+    // Legacy Flow: User is already in DB but unverified
+    const legacyUser = await User.findOne({ email });
+    if (legacyUser && !legacyUser.isVerified) {
+      legacyUser.isVerified = true;
+      legacyUser.lastLogin = new Date();
+      legacyUser.otpAttempts = 0;
+      legacyUser.deletionDate = null;
+      legacyUser.isRestricted = false;
+      legacyUser.restrictionReason = '';
+      await legacyUser.save();
+
+      return res.json({
+        message: 'Email verified successfully',
+        isVerified: true,
+        _id: legacyUser._id,
+        name: legacyUser.name,
+        email: legacyUser.email,
+        role: legacyUser.role,
+        token: generateToken(legacyUser._id, legacyUser.tokenVersion || 0),
+      });
+    }
+
+    return res.status(400).json({ message: 'Invalid verification request.' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -187,7 +181,7 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
         // Generate and send NEW OTP on login attempt if not verified
         const otpCode = await issueOtp(user.email);
 
-        const emailResult = await sendEmail({
+        sendEmail({
           to: user.email,
           subject: 'Action Required: Verify Your Email - Smart Garden',
           html: buildOtpEmail({
@@ -196,11 +190,7 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
             greeting: `Hello ${user.name},`,
             intro: 'You attempted to login but your email is not yet verified. Please use the following code to complete your verification:',
           }),
-        });
-
-        if (emailResult.status !== 'success') {
-          return res.status(502).json({ message: 'Could not send verification email. Please verify email configuration.' });
-        }
+        }).catch(err => console.error('Background email failed:', err.message));
 
         return res.status(401).json({
           message: 'Email not verified. A new verification code has been sent to your email.',
@@ -222,7 +212,7 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
         // Generate and send 2FA OTP
         const otpCode = await issueOtp(user.email);
 
-        const emailResult = await sendEmail({
+        sendEmail({
           to: user.email,
           subject: 'Security Code - Smart Garden 2FA',
           html: buildOtpEmail({
@@ -231,11 +221,7 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
             greeting: `Hello ${user.name},`,
             intro: `${isForced2FA ? 'Your account requires 2FA for every login.' : "It's been a while since your last login."} For your security, please use the following code to complete your login:`,
           }),
-        });
-
-        if (emailResult.status !== 'success') {
-          return res.status(502).json({ message: 'Could not send 2FA email. Please verify email configuration.' });
-        }
+        }).catch(err => console.error('Background email failed:', err.message));
 
         // Reset attempts when a new 2FA is triggered to allow fresh start
         user.otpAttempts = 0;

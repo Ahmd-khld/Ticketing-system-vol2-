@@ -48,23 +48,27 @@ const verifyOtp = (plainOtp, storedHash) => {
 // account deletion). One OTP document per email; the plaintext code is returned
 // only to the caller for emailing and is never persisted.
 
-const issueOtp = async (email) => {
+const issueOtp = async (email, registrationData = undefined) => {
   const code = generateOtp();
+  const updatePayload = { otp: hashOtp(code), createdAt: Date.now() };
+  if (registrationData !== undefined) {
+    updatePayload.registrationData = registrationData;
+  }
   await OTP.findOneAndUpdate(
     { email },
-    { otp: hashOtp(code), createdAt: Date.now() },
+    { $set: updatePayload },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
   return code;
 };
 
-// Returns true and consumes (deletes) the OTP on a correct match, false otherwise.
+// Returns the deleted record (truthy) on a correct match, false otherwise.
 const consumeOtp = async (email, code) => {
   if (!code) return false;
-  const record = await OTP.findOne({ email });
+  const record = await OTP.findOne({ email }).lean();
   if (record && verifyOtp(code, record.otp)) {
     await OTP.deleteOne({ _id: record._id });
-    return true;
+    return record;
   }
   return false;
 };
