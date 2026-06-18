@@ -198,6 +198,12 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('join-admin-room', () => {
+    if (socket.user.role === 'admin' || socket.user.role === 'sub-admin') {
+      socket.join('admin-room');
+    }
+  });
+
   socket.on('joinAdminRoom', () => {
     if (socket.user.role === 'admin' || socket.user.role === 'sub-admin') {
       socket.join('admin-room');
