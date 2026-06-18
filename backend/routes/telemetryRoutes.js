@@ -92,6 +92,77 @@ const generateMockData = async (io) => {
   }
 };
 
+// Function to check real telemetry data and generate alerts on state changes or threshold crossings
+const checkAndGenerateAlerts = async (oldState, newState, io) => {
+  // Do not generate alerts if this is the very first real payload (oldState is uninitialized)
+  if (!oldState || oldState.lastUpdated === null) return;
+
+  const alerts = [];
+  const timeString = new Date().toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const createAlert = (sensor, type, message) => {
+    alerts.push(new HardwareAlert({ sensor, type, message, timeString }));
+  };
+
+  // State Change: Water Pump
+  if (oldState.pumpStatus === 'OFF' && newState.pumpStatus === 'ON') {
+    createAlert('Water Pump', 'info', 'Water pump activated for irrigation.');
+  } else if (oldState.pumpStatus === 'ON' && newState.pumpStatus === 'OFF') {
+    createAlert('Water Pump', 'success', 'Irrigation cycle completed.');
+  }
+
+  // State Change: LDR Status
+  if (oldState.ldrStatus === 'OFF' && newState.ldrStatus === 'ON') {
+    createAlert('LDR', 'info', 'Pathway lamps activated due to low light.');
+  } else if (oldState.ldrStatus === 'ON' && newState.ldrStatus === 'OFF') {
+    createAlert('LDR', 'success', 'Pathway lamps deactivated.');
+  }
+
+  // State Change: Gate Servo
+  if (oldState.servoStatus === 'CLOSED' && newState.servoStatus === 'OPEN') {
+    createAlert('Gate Servo', 'info', 'Gate deployed/opened.');
+  } else if (oldState.servoStatus === 'OPEN' && newState.servoStatus === 'CLOSED') {
+    createAlert('Gate Servo', 'info', 'Gate closed.');
+  }
+
+  // Threshold: Temperature
+  if (oldState.temperature <= 35 && newState.temperature > 35) {
+    createAlert('Temperature', 'warning', `High temperature detected: ${newState.temperature}°C`);
+  } else if (oldState.temperature > 35 && newState.temperature <= 35) {
+    createAlert('Temperature', 'success', `Temperature returned to normal: ${newState.temperature}°C`);
+  }
+
+  // Threshold: Soil Moisture
+  if (oldState.moisture >= 20 && newState.moisture < 20) {
+    createAlert('Soil Moisture', 'warning', `Low soil moisture: ${newState.moisture}%`);
+  } else if (oldState.moisture < 20 && newState.moisture >= 20) {
+    createAlert('Soil Moisture', 'success', `Soil moisture optimal: ${newState.moisture}%`);
+  }
+
+  // Threshold: RGB Ultrasonic
+  if (oldState.rgbDistance >= 15 && newState.rgbDistance < 15) {
+    createAlert('RGB Ultrasonic', 'warning', `Smart Bin is nearly full (Distance: ${newState.rgbDistance}cm).`);
+  }
+
+  // Save and Emit all alerts
+  for (const alert of alerts) {
+    await alert.save();
+    if (io) {
+      io.to('admin-room').emit('hardwareAlert', {
+        id: alert._id,
+        time: alert.timeString,
+        message: alert.message,
+        type: alert.type,
+        sensor: alert.sensor,
+        createdAt: alert.createdAt
+      });
+    }
+  }
+};
+
 // @route   POST /api/hardware/debug
 // @desc    Diagnostic endpoint to verify raw connectivity from Arduino
 router.post('/hardware/debug', express.text({ type: '*/*' }), (req, res) => {
@@ -178,8 +249,10 @@ router.post('/hardware/telemetry', async (req, res) => {
     // Capture Arduino IP for command routing
     const arduinoIp = req.ip || req.connection.remoteAddress;
 
-    // Update in-memory state for rapid frontend access
-    latestState = {
+    // Broadcast real data via socket
+    const io = req.app.get('io');
+
+    const newState = {
       moisture,
       humidity,
       temperature,
@@ -192,17 +265,23 @@ router.post('/hardware/telemetry', async (req, res) => {
       arduinoIp
     };
 
+    // Check for alerts using the edge-detection logic
+    if (!mockMode) {
+      await checkAndGenerateAlerts(latestState, newState, io);
+    }
+
+    // Update in-memory state for rapid frontend access
+    latestState = newState;
+
     // Persist to DB for history
     const telemetry = new Telemetry({
       ...payload,
-      ldrStatus: ldrStatus || 'OFF',
-      pumpStatus: pumpStatus || 'OFF',
-      servoStatus: servoStatus || 'CLOSED',
+      ldrStatus: latestState.ldrStatus,
+      pumpStatus: latestState.pumpStatus,
+      servoStatus: latestState.servoStatus,
     });
     await telemetry.save();
 
-    // Broadcast real data via socket
-    const io = req.app.get('io');
     if (io) {
       io.emit('telemetryUpdate', { ...latestState });
     }
