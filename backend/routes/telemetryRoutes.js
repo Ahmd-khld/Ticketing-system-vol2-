@@ -143,8 +143,10 @@ const checkAndGenerateAlerts = async (oldState, newState, io) => {
   }
 
   // Threshold: RGB Ultrasonic
-  if (oldState.rgbDistance >= 15 && newState.rgbDistance < 15) {
+  if (oldState.rgbDistance > 5 && newState.rgbDistance <= 5) {
     createAlert('RGB Ultrasonic', 'warning', `Smart Bin is nearly full (Distance: ${newState.rgbDistance}cm).`);
+  } else if (oldState.rgbDistance <= 5 && newState.rgbDistance > 5) {
+    createAlert('RGB Ultrasonic', 'success', `Smart Bin has been emptied (Distance: ${newState.rgbDistance}cm).`);
   }
 
   // Save and Emit all alerts
