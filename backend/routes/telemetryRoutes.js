@@ -154,7 +154,7 @@ const checkAndGenerateAlerts = async (oldState, newState, io) => {
 
   if (oldBinState !== newBinState) {
     if (newBinState === 'full') {
-      createAlert('RGB Ultrasonic', 'need action', `Smart Bin is full (Distance: ${newState.rgbDistance}cm).`);
+      createAlert('RGB Ultrasonic', 'action', `Smart Bin is full (Distance: ${newState.rgbDistance}cm).`);
     } else if (newBinState === 'nearly_full') {
       createAlert('RGB Ultrasonic', 'warning', `Smart Bin is nearly full (Distance: ${newState.rgbDistance}cm).`);
     } else if (newBinState === 'empty') {
