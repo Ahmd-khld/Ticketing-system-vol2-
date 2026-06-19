@@ -111,7 +111,8 @@ const forgotPassword = async (req, res) => {
     const user = await User.findOne({ email: email });
 
     if (!user) {
-      return res.status(404).json({ message: 'User with this email does not exist' });
+      // Return 200 OK to prevent email enumeration
+      return res.json({ message: 'Password reset code sent to email' });
     }
 
     const otpCode = await issueOtp(email);

@@ -148,13 +148,24 @@ const ResetPassword = () => {
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading || message.type === 'success'}
-              className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl hover:-translate-y-1 ${isLoading || message.type === 'success' ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-smart-light hover:bg-smart-dark text-white'}`}
-            >
-              {isLoading ? 'Processing...' : 'Update Password'}
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                type="submit"
+                disabled={isLoading || message.type === 'success'}
+                className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl hover:-translate-y-1 ${isLoading || message.type === 'success' ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-smart-light hover:bg-smart-dark text-white'}`}
+              >
+                {isLoading ? 'Processing...' : 'Update Password'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                disabled={isLoading}
+                className="w-full py-4 rounded-2xl font-bold uppercase tracking-widest text-xs transition-all bg-transparent text-smart-dark dark:text-white/60 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
       </div>
