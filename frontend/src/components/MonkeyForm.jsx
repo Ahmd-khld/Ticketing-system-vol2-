@@ -444,12 +444,12 @@ const StyledWrapper = styled.div`
     }
   }
 
-  .blind-check ~ .form span.show,
-  .blind-check:checked ~ .form span.hide {
+  .blind-check:not(:checked) ~ .form span.hide,
+  .blind-check:checked ~ .form span.show {
     display: none;
   }
-  .blind-check ~ .form span.hide,
-  .blind-check:checked ~ .form span.show {
+  .blind-check:not(:checked) ~ .form span.show,
+  .blind-check:checked ~ .form span.hide {
     display: block;
   }
 
@@ -558,7 +558,7 @@ const StyledWrapper = styled.div`
     cursor: not-allowed;
   }
 
-  .blind-check:checked ~ .form .input#password-input {
+  .blind-check:not(:checked) ~ .form .input#password-input {
     -webkit-text-security: disc;
   }
 

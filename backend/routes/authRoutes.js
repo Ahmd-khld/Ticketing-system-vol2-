@@ -1,5 +1,6 @@
 const express = require('express');
 const User = require('../models/User');
+const OTP = require('../models/OTP');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/emailService');
 const { issueOtp, consumeOtp } = require('../utils/otpService');
@@ -23,13 +24,23 @@ const generateToken = (id, tokenVersion = 0) => {
 // @desc    Register a new user
 // @route   POST /api/register
 // @access  Public
-router.post('/register', validateRequest(registerValidationSchema), async (req, res) => {
+router.post('/register', validateRequest(registerValidationSchema), async (req, res, next) => {
   try {
     const { name, email, phone, password, age, role, hasDisability } = req.body;
 
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
+    }
+
+    const phoneExists = await User.findOne({ phone });
+    if (phoneExists) {
+      return res.status(400).json({ message: 'This mobile number is already registered to another account. Please use a different number or log in.' });
+    }
+
+    const pendingOtpPhone = await OTP.findOne({ 'registrationData.phone': phone });
+    if (pendingOtpPhone) {
+      return res.status(400).json({ message: 'This mobile number is currently pending email verification. Please check your email or try again later.' });
     }
 
     const salt = await bcrypt.genSalt(12);
@@ -70,14 +81,14 @@ router.post('/register', validateRequest(registerValidationSchema), async (req, 
       message: 'Registration started. Please verify your email with the code sent.',
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 
 // @desc    Verify email using OTP
 // @route   POST /api/verify-email
 // @access  Public
-router.post('/verify-email', async (req, res) => {
+router.post('/verify-email', async (req, res, next) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) {
@@ -143,14 +154,14 @@ router.post('/verify-email', async (req, res) => {
 
     return res.status(400).json({ message: 'Invalid verification request.' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 
 // @desc    Auth user & get token
 // @route   POST /api/login
 // @access  Public
-router.post('/login', authLimiter, validateRequest(loginValidationSchema), async (req, res) => {
+router.post('/login', authLimiter, validateRequest(loginValidationSchema), async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
@@ -253,14 +264,14 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
       res.status(401).json({ error: 'Invalid credentials' });
     }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
 // @desc    Verify 2FA using OTP
 // @route   POST /api/verify-2fa
 // @access  Public
-router.post('/verify-2fa', async (req, res) => {
+router.post('/verify-2fa', async (req, res, next) => {
   try {
     const { email, otp, rememberMe } = req.body;
     if (!email || !otp) {
@@ -338,14 +349,14 @@ router.post('/verify-2fa', async (req, res) => {
       });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 
 // @desc    Update password mandatorily
 // @route   POST /api/auth/mandatory-password-update
 // @access  Private
-router.post('/mandatory-password-update', protect, async (req, res) => {
+router.post('/mandatory-password-update', protect, async (req, res, next) => {
   try {
     const { password } = req.body;
     const user = await User.findById(req.user._id);
@@ -385,7 +396,7 @@ router.post('/mandatory-password-update', protect, async (req, res) => {
       token: generateToken(user._id, user.tokenVersion)
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 

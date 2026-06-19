@@ -51,7 +51,7 @@ describe('Game API', () => {
       
       const promo = await PromoCode.findOne({ userId: user._id });
       expect(promo).toBeTruthy();
-      expect(promo.code).toMatch(/^SMART-/);
+      expect(promo.code).toHaveLength(64);
     });
 
     it('should prevent playing after 3 trials', async () => {

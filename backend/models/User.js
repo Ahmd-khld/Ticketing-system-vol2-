@@ -24,8 +24,8 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      get: decryptRandom,
-      set: encryptRandom,
+      get: decryptDeterministic,
+      set: encryptDeterministic,
     },
     password: {
       type: String,

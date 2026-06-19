@@ -16,10 +16,19 @@ const {
   verifyCurrentEmail,
   setNewEmail,
   verifyNewEmail,
+  checkEmailAvailability,
 } = require('../controllers/emailChangeController');
 
 // All routes require an authenticated session (protect). Phase-3 routes ALSO
 // require the short-lived temp token from phase 1 (requireEmailChangeToken).
+
+// ---- Pre-flight check -------------------------------------------------------
+router.post(
+  '/check-availability',
+  protect,
+  validateRequest(setNewEmailSchema), // uses { newEmail } validation
+  checkEmailAvailability
+);
 
 // ---- Phase 1: re-authenticate (password) then verify a 2FA code -------------
 // Step 1: password -> sends a 2FA security code to the current email.

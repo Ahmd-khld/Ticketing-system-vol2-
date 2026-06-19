@@ -10,9 +10,7 @@ const OTP_TTL_MS = 10 * 60 * 1000; // each individual code lives 10 minutes
 const TEMP_TOKEN_TTL_SECONDS = 10 * 60;
 const MAX_ATTEMPTS = 5; // failed OTP guesses before the request is destroyed
 
-// Escape user input before using it inside a RegExp (case-insensitive email match).
-const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const emailRegexExact = (email) => new RegExp(`^${escapeRegex(email)}$`, 'i');
+
 
 // Mirrors authRoutes.generateToken so a refreshed session matches login tokens.
 const signSessionToken = (id, tokenVersion) => {
@@ -134,6 +132,40 @@ const verifyCurrentEmail = async (req, res) => {
 };
 
 /**
+ * PRE-FLIGHT CHECK — POST /api/users/email-change/check-availability   (protect)
+ * Checks if the proposed new email is already in use by a User or Pending OTP Registration.
+ */
+const checkEmailAvailability = async (req, res) => {
+  try {
+    const newEmail = String(req.body.newEmail || '').trim().toLowerCase();
+    
+    // Check if the current user is trying to change to their own email
+    const currentUser = await User.findById(req.user._id);
+    if (currentUser && newEmail === String(currentUser.email).toLowerCase()) {
+      return res.status(400).json({ message: 'The new email must be different from your current email.' });
+    }
+
+    // Check existing verified/unverified users
+    const existingUser = await User.findOne({ email: newEmail });
+    if (existingUser) {
+      return res.status(409).json({ message: 'That email address is already in use.' });
+    }
+
+    // Check pending OTP registrations
+    const OTP = require('../models/OTP');
+    const existingOtp = await OTP.findOne({ email: newEmail });
+    if (existingOtp) {
+      return res.status(409).json({ message: 'That email address is already in use.' });
+    }
+
+    return res.status(200).json({ message: 'Email is available' });
+  } catch (error) {
+    console.error('[EmailChange] checkEmailAvailability error:', error.message);
+    return res.status(500).json({ message: 'Failed to check email availability.' });
+  }
+};
+
+/**
  * PHASE 3a — POST /api/users/email-change/set-new-email   (protect + requireEmailChangeToken)
  * Validate the temp token, ensure the new email is free, OTP to the NEW email.
  */
@@ -156,7 +188,7 @@ const setNewEmail = async (req, res) => {
       return res.status(400).json({ message: 'The new email must be different from your current email.' });
     }
 
-    const existing = await User.findOne({ email: emailRegexExact(newEmail) });
+    const existing = await User.findOne({ email: newEmail });
     if (existing) {
       return res.status(409).json({ message: 'That email address is already in use.' });
     }
@@ -210,7 +242,7 @@ const verifyNewEmail = async (req, res) => {
 
     // Re-check uniqueness right before commit (guards against a race during the flow).
     const taken = await User.findOne({
-      email: emailRegexExact(request.newEmail),
+      email: request.newEmail,
       _id: { $ne: req.user._id },
     });
     if (taken) {
@@ -255,4 +287,7 @@ const verifyNewEmail = async (req, res) => {
   }
 };
 
-module.exports = { initiateEmailChange, verifyCurrentEmail, setNewEmail, verifyNewEmail };
+module.exports = { initiateEmailChange, verifyCurrentEmail, setNewEmail,
+  verifyNewEmail,
+  checkEmailAvailability,
+};

@@ -94,6 +94,25 @@ const UsersTab = ({ isSuperAdmin }) => {
   };
 
 
+  const handleDeleteUser = async (userId) => {
+    const isConfirmed = await showConfirm(
+      'Are you sure you want to permanently delete this user? This action cannot be undone and will remove all their data.',
+      'Delete User'
+    );
+    if (!isConfirmed) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      await api.delete(`/admin/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showModal('User deleted successfully.', 'Success', 'success');
+      fetchUsers(userPage);
+    } catch (error) {
+      console.error('Failed to delete user', error);
+      showModal(error.response?.data?.message || 'Failed to delete user', 'Error', 'error');
+    }
+  };
 
   const handleExportUsersCSV = async () => {
     const token = localStorage.getItem('token');
@@ -250,6 +269,16 @@ const UsersTab = ({ isSuperAdmin }) => {
                         <div className="flex justify-end items-center space-x-2">
                           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => navigate(`/admin/users/${user._id}/tickets`)} className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-200 dark:border-blue-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm">View</motion.button>
                           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleRestrictUser(user._id, user.isRestricted)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${user.isRestricted ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-200 dark:border-orange-800 shadow-sm'}`}>{user.isRestricted ? 'Unrestrict' : 'Restrict'}</motion.button>
+                          {isSuperAdmin && (
+                            <motion.button 
+                              whileHover={{ scale: 1.05 }} 
+                              whileTap={{ scale: 0.95 }} 
+                              onClick={() => handleDeleteUser(user._id)} 
+                              className="px-4 py-2.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-600 hover:text-white border border-red-200 dark:border-red-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+                            >
+                              Delete
+                            </motion.button>
+                          )}
                         </div>
                       </td>
                     </motion.tr>

@@ -16,22 +16,25 @@ describe('Auth API', () => {
         .send({
           name: 'Test User',
           email: 'test@example.com',
-          password: 'password123',
+          phone: '01012345678',
+          password: 'Password123!',
           age: 25
         });
       
       expect(res.statusCode).toEqual(201);
-      expect(res.body).toHaveProperty('message', 'Registration successful. Please verify your email with the code sent.');
+      expect(res.body).toHaveProperty('message', 'Registration started. Please verify your email with the code sent.');
       
-      const user = await User.findOne({ email: 'test@example.com' });
-      expect(user).toBeTruthy();
-      expect(user.name).toBe('Test User');
+      const OTP = require('../models/OTP');
+      const otpRecord = await OTP.findOne({ email: 'test@example.com' });
+      expect(otpRecord).toBeTruthy();
+      expect(otpRecord.registrationData.name).toBe('Test User');
     });
 
     it('should fail to register with an existing email', async () => {
       await User.create({
         name: 'Existing User',
         email: 'test@example.com',
+        phone: '01012345678',
         password: 'password123'
       });
 
@@ -40,7 +43,8 @@ describe('Auth API', () => {
         .send({
           name: 'Test User',
           email: 'test@example.com',
-          password: 'password123',
+          phone: '01012345678',
+          password: 'Password123!',
           age: 25
         });
       
@@ -55,6 +59,7 @@ describe('Auth API', () => {
       await User.create({
         name: 'To Verify',
         email,
+        phone: '01023456789',
         password: 'password123',
         isVerified: false
       });
@@ -81,6 +86,7 @@ describe('Auth API', () => {
       await User.create({
         name: 'To Verify Fail',
         email,
+        phone: '01034567890',
         password: 'password123',
         isVerified: false
       });
@@ -102,6 +108,7 @@ describe('Auth API', () => {
       await User.create({
         name: 'Verified User',
         email: 'verified@example.com',
+        phone: '01045678901',
         password: 'password123',
         isVerified: true
       });
@@ -122,6 +129,7 @@ describe('Auth API', () => {
       await User.create({
         name: 'Unverified User',
         email: 'unverified@example.com',
+        phone: '01056789012',
         password: 'password123',
         isVerified: false
       });
@@ -141,6 +149,7 @@ describe('Auth API', () => {
       await User.create({
         name: 'Test User',
         email: 'test@example.com',
+        phone: '01067890123',
         password: 'password123',
         isVerified: true
       });

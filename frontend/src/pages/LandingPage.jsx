@@ -74,6 +74,35 @@ const LandingPage = () => {
   const handleAuth = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!isLogin) {
+      const ALLOWED_PROVIDERS = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com'];
+      const domain = email.split('@')[1];
+      if (!domain || !ALLOWED_PROVIDERS.includes(domain.toLowerCase())) {
+        setError('Email must be from a supported provider (gmail, yahoo, outlook, hotmail, icloud)');
+        return;
+      }
+
+      if (phone.length !== 11) {
+        setError('Phone number must be exactly 11 digits');
+        return;
+      }
+
+      if (!/^01[0125][0-9]{8}$/.test(phone)) {
+        setError('Must be a valid Egyptian phone number (e.g., starts with 010, 011, 012, or 015)');
+        return;
+      }
+
+      const hasLower = /[a-z]/.test(password);
+      const hasUpper = /[A-Z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecial = /[^a-zA-Z0-9]/.test(password);
+      if (password.length < 8 || !hasLower || !hasUpper || !hasNumber || !hasSpecial) {
+        setError('Password must be at least 8 characters and contain uppercase, lowercase, number, and special character');
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     const path = isLogin ? '/login' : '/register';

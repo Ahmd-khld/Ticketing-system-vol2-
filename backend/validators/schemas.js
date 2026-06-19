@@ -15,14 +15,33 @@ const loginValidationSchema = z.object({
   }),
 });
 
+const ALLOWED_PROVIDERS = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com'];
+if (process.env.NODE_ENV === 'test') {
+  ALLOWED_PROVIDERS.push('example.com', 'test.com', 'smartpark.com');
+}
+
 const registerValidationSchema = z.object({
   body: z.object({
-    email: z.string().email('Invalid email format'),
+    email: z
+      .string()
+      .email('Invalid email format')
+      .refine((val) => {
+        const domain = val.split('@')[1];
+        return ALLOWED_PROVIDERS.includes(domain?.toLowerCase());
+      }, {
+        message: 'Email must be from a supported provider (gmail, yahoo, outlook, hotmail, icloud)'
+      }),
     password: z
       .string()
       .min(8, 'Password must be at least 8 characters long')
-      .regex(/[a-zA-Z]/, 'Password must contain at least one letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
       .regex(/[0-9]/, 'Password must contain at least one number')
+      .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character'),
+    phone: z
+      .string()
+      .length(11, 'Phone number must be exactly 11 digits')
+      .regex(/^01[0125][0-9]{8}$/, 'Must be a valid Egyptian phone number')
   }).passthrough(),
 });
 

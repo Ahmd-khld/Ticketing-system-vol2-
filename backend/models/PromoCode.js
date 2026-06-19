@@ -26,11 +26,10 @@ const promoCodeSchema = new mongoose.Schema(
   }
 );
 
-promoCodeSchema.pre('save', function (next) {
+promoCodeSchema.pre('save', function () {
   if (this.isModified('code')) {
     this.code = crypto.createHash('sha256').update(this.code.toUpperCase()).digest('hex');
   }
-  next();
 });
 
 const PromoCode = mongoose.model('PromoCode', promoCodeSchema);

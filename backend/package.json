@@ -9,6 +9,7 @@
     "test": "jest --runInBand --forceExit"
   },
   "devDependencies": {
+    "fast-check": "^4.8.0",
     "jest": "^30.4.2",
     "mongodb-memory-server": "^11.1.0",
     "nodemon": "^3.1.14",

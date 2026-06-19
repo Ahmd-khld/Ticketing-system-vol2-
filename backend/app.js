@@ -23,6 +23,7 @@ const HardwareAlert = require('./models/HardwareAlert');
 const { protect } = require('./middleware/authMiddleware');
 const { requireSuperAdmin, requireAdmin } = require('./middleware/superAdminMiddleware');
 const { checkBannedIP, verifyAdminWhitelist } = require('./middleware/ipControl');
+const { errorHandler } = require('./middleware/errorMiddleware');
 
 const ticketRoutes = require('./routes/ticketRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -215,19 +216,6 @@ io.on('connection', (socket) => {
   });
 });
 
-app.use((err, req, res, next) => {
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  
-  // Robust check for authorization errors
-  if (
-    err.message.includes('Not authorized') || 
-    err.message.includes('token failed') || 
-    err.message.includes('jwt')
-  ) {
-    statusCode = 401;
-  }
-  
-  res.status(statusCode).json({ message: err.message });
-});
+app.use(errorHandler);
 
 module.exports = { app, server, io };

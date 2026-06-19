@@ -160,6 +160,13 @@ const Profile = () => {
     const emailChanged = email.trim().toLowerCase() !== (user?.email || '').trim().toLowerCase();
 
     try {
+      if (emailChanged) {
+        // Pre-flight check: ensure the email is available before starting the process
+        await api.post('/users/email-change/check-availability', {
+          newEmail: email.trim()
+        });
+      }
+
       // Name and phone are immutable; email goes through the secure flow below.
       // Only the accessibility preference is updated directly here.
       await api.put('/users/profile', { hasDisability });
@@ -180,6 +187,13 @@ const Profile = () => {
       setMessage('Profile Updated');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
+      if (error.response?.status === 409 || error.response?.status === 400) {
+        // Show pop-up message for email already in use
+        showModal(error.response?.data?.message || 'That email address is already in use.', 'Cannot Change Email', 'error');
+        // Revert the input back to the original email
+        setEmail(user?.email || '');
+        return;
+      }
       setMessage(error.response?.data?.message || 'Update failed');
     }
   };
