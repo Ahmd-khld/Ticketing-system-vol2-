@@ -761,12 +761,12 @@ const Profile = () => {
                                   </span>
                                 </p>
                                 {ticket.isPromoApplied && (
-                                  <div className="mb-4 text-right">
+                                  <div className="mb-4 text-right w-full flex flex-col items-end">
                                     <p className="text-[10px] font-black text-gray-400 line-through">
                                       WAS {ticket.originalPrice} EGP
                                     </p>
                                     <p className="text-[10px] font-black text-green-500 uppercase tracking-tighter">
-                                      (Promo Applied) - {ticket.promoCodeName}
+                                      (PROMO APPLIED)
                                     </p>
                                   </div>
                                 )}

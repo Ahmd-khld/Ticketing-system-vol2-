@@ -28,17 +28,27 @@ router.post('/register', validateRequest(registerValidationSchema), async (req, 
   try {
     const { name, email, phone, password, age, role, hasDisability } = req.body;
 
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: email.toLowerCase() });
     if (userExists) {
+      if (userExists.deletionDate) {
+        return res.status(400).json({ message: 'This email is attached to an account scheduled for deletion. Please wait 7 days or log in to restore it.' });
+      }
       return res.status(400).json({ message: 'User already exists' });
     }
 
     const phoneExists = await User.findOne({ phone });
     if (phoneExists) {
+      if (phoneExists.deletionDate) {
+        return res.status(400).json({ message: 'This mobile number is attached to an account scheduled for deletion. Please wait 7 days or log in to restore it.' });
+      }
       return res.status(400).json({ message: 'This mobile number is already registered to another account. Please use a different number or log in.' });
     }
 
-    const pendingOtpPhone = await OTP.findOne({ 'registrationData.phone': phone });
+    const fifteenSecondsAgo = new Date(Date.now() - 15 * 1000);
+    const pendingOtpPhone = await OTP.findOne({ 
+      'registrationData.phone': phone,
+      createdAt: { $gt: fifteenSecondsAgo }
+    });
     if (pendingOtpPhone) {
       return res.status(400).json({ message: 'This mobile number is currently pending email verification. Please check your email or try again later.' });
     }

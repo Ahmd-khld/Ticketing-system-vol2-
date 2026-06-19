@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 
 const calculateStrength = (pwd) => {
@@ -38,6 +38,26 @@ const MonkeyForm = ({
   const strength = calculateStrength(password);
   const isSubmitDisabled = isLoading || (!isLogin && password && strength === 'Weak');
 
+  const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    if (error && error.includes('pending email verification')) {
+      setCountdown(15);
+    } else {
+      setCountdown(0);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [countdown]);
+
   return (
     <StyledWrapper>
       <div className="card shadow-2xl">
@@ -46,15 +66,43 @@ const MonkeyForm = ({
           <div className="title">{isLogin ? 'Visitor Login' : 'Create Account'}</div>
 
           {error && (
-            <div className="w-full mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-xs font-bold border border-red-100 flex flex-col gap-2">
-              <span>{error}</span>
+            <div className="w-full mb-4 overflow-hidden bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 rounded-xl flex flex-col relative">
+              <div className="p-4 text-red-600 dark:text-red-400 text-xs font-bold text-center leading-relaxed">
+                {error}
+              </div>
+              
+              {countdown > 0 && (
+                <div className="px-4 pb-4 flex flex-col gap-2.5 items-center">
+                  <div className="text-[10px] uppercase tracking-widest font-black text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-3 py-1 rounded-full shadow-inner">
+                    Retry available in {countdown}s
+                  </div>
+                  <div className="w-full h-1.5 bg-red-100 dark:bg-red-900/30 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-red-500 dark:bg-red-400 transition-all duration-1000 ease-linear rounded-full"
+                      style={{ width: `${(countdown / 15) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {countdown === 0 && error.includes('pending email verification') && (
+                <div className="px-4 pb-4 flex justify-center animate-fade-in">
+                  <div className="text-[10px] uppercase tracking-widest font-black text-[#80C241] bg-[#80C241]/10 border border-[#80C241]/20 px-4 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
+                    Ready to Retry
+                  </div>
+                </div>
+              )}
+
               {(error.includes('Access Denied') || error.includes('suspended')) && (
-                <a
-                  href="mailto:support@smartpark.com"
-                  className="bg-red-600 text-white px-3 py-1.5 rounded-md text-[10px] uppercase tracking-widest hover:bg-red-700 transition-colors inline-block w-fit"
-                >
-                  Contact Support
-                </a>
+                <div className="px-4 pb-4 flex justify-center">
+                  <a
+                    href="mailto:support@smartpark.com"
+                    className="bg-red-600 text-white px-4 py-2 rounded-lg text-[10px] uppercase tracking-widest font-bold hover:bg-red-700 transition-colors shadow-sm"
+                  >
+                    Contact Support
+                  </a>
+                </div>
               )}
             </div>
           )}
