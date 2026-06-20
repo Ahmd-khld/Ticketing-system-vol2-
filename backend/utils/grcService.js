@@ -13,6 +13,17 @@ const Risk = require('../models/Risk');
 const User = require('../models/User');
 const AdminAuditLog = require('../models/AdminAuditLog');
 const Ticket = require('../models/Ticket');
+const { decryptDeterministic } = require('./encryption');
+
+const decryptText = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  // Match the standard IV:AuthTag:Encrypted format (or legacy IV:Encrypted)
+  const hexRegex = /\b([0-9a-f]+:[0-9a-f]+(?::[0-9a-f]+)?)\b/gi;
+  return text.replace(hexRegex, (match) => {
+    const decrypted = decryptDeterministic(match);
+    return decrypted !== match ? decrypted : match;
+  });
+};
 
 /**
  * Centralized logic to detect insider threats from audit logs and manage recursive risk records.
@@ -181,11 +192,25 @@ const sanitizeAndSyncGRCData = async (parsedData) => {
       return r;
     });
 
-    // --- 4. DEDUPLICATION (By unique Risk ID) ---
+    // --- 4. DEDUPLICATION & DECRYPTION ---
     const uniqueRisks = [];
     const seenIds = new Set();
     for (const risk of syncedRisks) {
       if (!seenIds.has(risk.id)) {
+        if (risk.description) risk.description = decryptText(risk.description);
+        if (risk.asset) risk.asset = decryptText(risk.asset);
+        if (risk.recommendations) {
+          risk.recommendations = risk.recommendations.map(rec => ({
+            ...rec,
+            title: decryptText(rec.title),
+            body: decryptText(rec.body),
+            params: rec.params ? Object.fromEntries(
+              Object.entries(rec.params).map(([k, v]) => [k, typeof v === 'string' ? decryptText(v) : v])
+            ) : rec.params
+          }));
+        }
+        risk.displayId = decryptText(risk.id);
+        
         uniqueRisks.push(risk);
         seenIds.add(risk.id);
       }

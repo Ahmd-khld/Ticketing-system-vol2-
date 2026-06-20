@@ -6,7 +6,7 @@ import { socket } from '../socket';
 
 const AdminGRC = () => {
   const navigate = useNavigate();
-  
+
   // Strict Super Admin Access Control
   const superAdminEmail = (import.meta.env.VITE_SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase();
   const currentAdminEmail = (localStorage.getItem('adminEmail') || '').toLowerCase().trim();
@@ -33,7 +33,7 @@ const AdminGRC = () => {
   const [remediating, setRemediating] = useState(null);
   const [executedRemediations, setExecutedRemediations] = useState(new Set());
   const [selectedControl, setSelectedControl] = useState(null);
-  const [selectedRisk, setSelectedRisk] = useState(null); 
+  const [selectedRisk, setSelectedRisk] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [scoreFilter, setScoreFilter] = useState('All');
   const [timeFilter, setTimeFilter] = useState('All');
@@ -101,7 +101,7 @@ const AdminGRC = () => {
       const res = await api.get(`/grc/summary?framework=${encodeURIComponent(framework)}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (res.data) {
         setData(res.data);
         setRiskRegister(res.data.risk_register || []);
@@ -130,7 +130,7 @@ const AdminGRC = () => {
 
   useEffect(() => {
     fetchGRCData(true, selectedFramework);
-    
+
     // Ensure socket is connected
     if (!socket.connected) {
       socket.connect();
@@ -158,7 +158,7 @@ const AdminGRC = () => {
 
     // Keep a slower background poll as a fallback (every 30 seconds instead of 15)
     const interval = setInterval(() => fetchGRCData(false, selectedFramework), 30000);
-    
+
     return () => {
       clearInterval(interval);
       socket.off('auditLogUpdate', handleLiveUpdate);
@@ -176,16 +176,16 @@ const AdminGRC = () => {
     try {
       setUpdating(true);
       const token = localStorage.getItem('token');
-      await api.patch(`/grc/compliance/${controlId}`, 
+      await api.patch(`/grc/compliance/${controlId}`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setComplianceControls(prev => 
+      setComplianceControls(prev =>
         prev.map(c => (c.controlId === controlId || c.control_id === controlId) ? { ...c, status: newStatus } : c)
       );
       showNotification(`Control ${controlId} status updated to ${newStatus}`);
-      setSelectedControl(null); 
+      setSelectedControl(null);
     } catch (err) {
       console.error('Failed to update compliance status:', err);
       showNotification('Failed to update control status.', 'error');
@@ -198,11 +198,11 @@ const AdminGRC = () => {
     try {
       setUpdating(true);
       const token = localStorage.getItem('token');
-      await api.patch(`/grc/risks/${riskId}`, 
+      await api.patch(`/grc/risks/${riskId}`,
         { status: 'Resolved' },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       // Update local state immediately for instant UI feedback
       setRiskRegister(prev => prev.map(r => r.id === riskId ? { ...r, status: 'Resolved' } : r));
       if (selectedRisk && selectedRisk.id === riskId) {
@@ -215,7 +215,7 @@ const AdminGRC = () => {
         setSelectedRisk(null);
         fetchGRCData(false);
       }, 1000);
-      
+
     } catch (err) {
       console.error('Resolve Risk Error:', err);
       showNotification('Failed to resolve risk.', 'error');
@@ -228,7 +228,7 @@ const AdminGRC = () => {
     try {
       setRemediating(riskId);
       const token = localStorage.getItem('token');
-      
+
       let res;
       if (action === 'RESOLVE_BRUTE_FORCE') {
         // Execute the specialized security playbook
@@ -242,15 +242,15 @@ const AdminGRC = () => {
         });
       } else {
         // Execute the standard GRC remediation
-        res = await api.post('/grc/remediate', 
+        res = await api.post('/grc/remediate',
           { riskId, action, params },
           { headers: { Authorization: `Bearer ${token}` } }
         );
       }
-      
+
       // Mark as executed locally
       setExecutedRemediations(prev => new Set(prev).add(`${riskId}-${action}`));
-      
+
       showNotification(res.data.message || 'Risk Resolved & Playbook Executed');
       fetchGRCData(false);
     } catch (err) {
@@ -307,30 +307,30 @@ const AdminGRC = () => {
       const score = r.likelihood * r.impact;
       const matchesCategory = categoryFilter === 'All' || r.category === categoryFilter;
       const matchesStatus = statusFilter === 'All' || (r.status || '').toLowerCase() === statusFilter.toLowerCase();
-      
+
       let matchesScore = true;
       if (scoreFilter === 'High') matchesScore = score > 15;
       else if (scoreFilter === 'Medium') matchesScore = score >= 5 && score <= 15;
       else if (scoreFilter === 'Low') matchesScore = score < 5;
-      
+
       let matchesTime = true;
       const rDate = new Date(r.createdAt || r.timestamp || 0);
       const now = new Date();
       if (timeFilter === 'Last 24 Hours') matchesTime = (now - rDate) <= 24 * 60 * 60 * 1000;
       else if (timeFilter === 'Last 7 Days') matchesTime = (now - rDate) <= 7 * 24 * 60 * 60 * 1000;
       else if (timeFilter === 'Last 30 Days') matchesTime = (now - rDate) <= 30 * 24 * 60 * 60 * 1000;
-      
+
       return matchesCategory && matchesScore && matchesStatus && matchesTime;
     })
     .sort((a, b) => {
       const scoreA = (a.likelihood || 0) * (a.impact || 0);
       const scoreB = (b.likelihood || 0) * (b.impact || 0);
-      
+
       // Sort by score descending
       if (scoreB !== scoreA) {
         return scoreB - scoreA;
       }
-      
+
       // Tie-breaker: sort by most recent detection date
       return new Date(b.createdAt || b.timestamp || 0) - new Date(a.createdAt || a.timestamp || 0);
     });
@@ -356,17 +356,17 @@ const AdminGRC = () => {
 
   return (
     <div className="min-h-screen bg-smart-bg dark:bg-[#0A0C10] text-slate-200 font-sans selection:bg-smart-light/30 pb-20">
-      <AdminHeader 
-        title="Enterprise GRC Suite" 
-        subtitle="Governance, Risk & Compliance Control Plane" 
+      <AdminHeader
+        title="Enterprise GRC Suite"
+        subtitle="Governance, Risk & Compliance Control Plane"
         userName={localStorage.getItem('adminEmail')}
         onLogout={handleLogout}
         icon="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.071 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"
       />
-      
+
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <Link 
+          <Link
             to="/admin/dashboard"
             className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-lg border border-slate-700 transition-colors duration-200 w-fit"
           >
@@ -386,11 +386,11 @@ const AdminGRC = () => {
         <div className="relative mb-10 group/console">
           {/* Ambient background glow */}
           <div className="absolute -inset-4 bg-gradient-to-tr from-emerald-500/5 via-blue-500/5 to-purple-500/5 rounded-[3rem] blur-3xl opacity-0 group-hover/console:opacity-100 transition-opacity duration-1000"></div>
-          
+
           <div className="relative bg-[#0B0F15] border border-white/5 rounded-[2rem] shadow-2xl overflow-hidden backdrop-blur-md">
             {/* Technical scanline overlay */}
             <div className="absolute inset-0 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-[0.03]"></div>
-            
+
             {/* Dynamic Status Header */}
             <div className="flex items-center justify-between px-8 py-4 bg-white/[0.02] border-b border-white/5">
               <div className="flex items-center gap-4">
@@ -406,7 +406,7 @@ const AdminGRC = () => {
                   <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                   Processing: 0.12ms
                 </div>
-                <button 
+                <button
                   onClick={handleRestartGRC}
                   className="p-1.5 hover:bg-blue-500/10 rounded-lg transition-all group/refresh border border-transparent hover:border-blue-500/20"
                   title="Recalibrate Engine"
@@ -417,7 +417,7 @@ const AdminGRC = () => {
             </div>
 
             <div className="flex flex-col lg:flex-row">
-              
+
               {/* Left Wing: Scope & Governance */}
               <div className="lg:w-1/4 p-8 border-r border-white/10 bg-gradient-to-b from-transparent to-white/[0.02]">
                 <div className="space-y-8">
@@ -464,11 +464,11 @@ const AdminGRC = () => {
                     <div className="relative w-40 h-40">
                       <svg className="w-full h-full transform -rotate-90">
                         <circle cx="80" cy="80" r="72" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="transparent" />
-                        <circle cx="80" cy="80" r="72" stroke="url(#intelGradient)" strokeWidth="10" fill="transparent" 
-                          strokeDasharray={452.4} 
+                        <circle cx="80" cy="80" r="72" stroke="url(#intelGradient)" strokeWidth="10" fill="transparent"
+                          strokeDasharray={452.4}
                           strokeDashoffset={452.4 - (452.4 * adherenceData.score) / 100}
                           strokeLinecap="round"
-                          className="transition-all duration-[2000ms] ease-out shadow-[0_0_20px_rgba(16,185,129,0.4)]" 
+                          className="transition-all duration-[2000ms] ease-out shadow-[0_0_20px_rgba(16,185,129,0.4)]"
                         />
                         <defs>
                           <linearGradient id="intelGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -498,8 +498,8 @@ const AdminGRC = () => {
                         const rawLabel = check.replace('Dependency Found: ', '').replace('Active: ', '').replace('Detected ', '').replace('Config: ', '');
                         const label = rawLabel.trim();
                         return (
-                          <div 
-                            key={idx} 
+                          <div
+                            key={idx}
                             onClick={() => setSelectedNode({ label, description: nodeDetailsMap[label] || 'Detailed technical implementation data for this security node is being synchronized with the master ledger.' })}
                             className="flex items-center gap-3 bg-white/[0.05] border border-white/10 rounded-xl px-4 py-3 hover:bg-white/[0.1] hover:border-emerald-500/50 transition-all group/node cursor-pointer shadow-lg active:scale-95"
                           >
@@ -582,7 +582,7 @@ const AdminGRC = () => {
                 <div className="inline-block px-5 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-2">
                   <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">{selectedNode.label}</span>
                 </div>
-                
+
                 <p className="text-base text-slate-300 leading-relaxed font-medium">
                   {selectedNode.description}
                 </p>
@@ -594,13 +594,13 @@ const AdminGRC = () => {
                   </div>
                   <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Audit Key</span>
-                    <span className="text-xs font-mono text-slate-400 uppercase">0x{Math.floor(Math.random()*0xFFFFFF).toString(16).toUpperCase()}</span>
+                    <span className="text-xs font-mono text-slate-400 uppercase">0x{Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase()}</span>
                   </div>
                 </div>
               </div>
 
               <div className="px-8 py-6 bg-white/[0.01] border-t border-white/5 flex justify-center">
-                <button 
+                <button
                   onClick={() => setSelectedNode(null)}
                   className="px-12 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-[10px] tracking-[0.2em] rounded-2xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] active:scale-95"
                 >
@@ -617,11 +617,10 @@ const AdminGRC = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`whitespace-nowrap px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${
-                activeTab === tab 
-                ? 'bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.2)]' 
-                : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.03]'
-              }`}
+              className={`whitespace-nowrap px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${activeTab === tab
+                  ? 'bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.2)]'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.03]'
+                }`}
             >
               {tab}
             </button>
@@ -678,7 +677,7 @@ const AdminGRC = () => {
                     <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> CRIT</span>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-center gap-8 max-w-md mx-auto relative z-10">
                   <div className="w-8 flex items-center justify-center">
                     <div className="whitespace-nowrap -rotate-90 text-[9px] font-black uppercase tracking-[0.5em] text-gray-600">Likelihood</div>
@@ -687,8 +686,8 @@ const AdminGRC = () => {
                   <div className="flex-1">
                     <div className="grid grid-cols-5 grid-rows-5 gap-1.5 aspect-square">
                       {Array.from({ length: 25 }).map((_, i) => {
-                        const row = 5 - Math.floor(i / 5); 
-                        const col = (i % 5) + 1; 
+                        const row = 5 - Math.floor(i / 5);
+                        const col = (i % 5) + 1;
                         const score = row * col;
                         const risksInCell = riskRegister.filter(r => r.likelihood === col && r.impact === row).length;
                         let bgColor = 'bg-white/[0.02]';
@@ -722,14 +721,14 @@ const AdminGRC = () => {
               {/* Premium Stealth Filter Bar */}
               <div className="bg-[#0F1218] border border-white/5 p-6 rounded-3xl flex flex-wrap items-center gap-8 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-[2px] h-full bg-emerald-500/40"></div>
-                
+
                 <div className="flex flex-col gap-2 min-w-[220px]">
                   <span className="text-[9px] font-black uppercase text-gray-500 tracking-[0.3em] flex items-center gap-2">
                     <div className="w-1 h-1 bg-emerald-500 rounded-full"></div>
                     Risk Category
                   </span>
                   <div className="relative group/filter">
-                    <select 
+                    <select
                       value={categoryFilter}
                       onChange={(e) => setCategoryFilter(e.target.value)}
                       className="w-full bg-white/[0.03] border border-white/5 group-hover/filter:border-white/10 text-slate-200 text-[10px] font-black uppercase tracking-widest rounded-xl px-4 py-3.5 outline-none transition-all cursor-pointer appearance-none"
@@ -748,7 +747,7 @@ const AdminGRC = () => {
                     Severity
                   </span>
                   <div className="relative group/filter">
-                    <select 
+                    <select
                       value={scoreFilter}
                       onChange={(e) => setScoreFilter(e.target.value)}
                       className="w-full bg-white/[0.03] border border-white/5 group-hover/filter:border-white/10 text-slate-200 text-[10px] font-black uppercase tracking-widest rounded-xl px-4 py-3.5 outline-none transition-all cursor-pointer appearance-none"
@@ -770,7 +769,7 @@ const AdminGRC = () => {
                     Timeline
                   </span>
                   <div className="relative group/filter">
-                    <select 
+                    <select
                       value={timeFilter}
                       onChange={(e) => setTimeFilter(e.target.value)}
                       className="w-full bg-white/[0.03] border border-white/5 group-hover/filter:border-white/10 text-slate-200 text-[10px] font-black uppercase tracking-widest rounded-xl px-4 py-3.5 outline-none transition-all cursor-pointer appearance-none"
@@ -792,11 +791,10 @@ const AdminGRC = () => {
                       <button
                         key={status}
                         onClick={() => setStatusFilter(status)}
-                        className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${
-                          statusFilter === status 
-                          ? 'bg-emerald-500 text-black shadow-lg' 
-                          : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.02]'
-                        }`}
+                        className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${statusFilter === status
+                            ? 'bg-emerald-500 text-black shadow-lg'
+                            : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.02]'
+                          }`}
                       >
                         {status}
                       </button>
@@ -810,10 +808,10 @@ const AdminGRC = () => {
                   <table className="w-full text-left border-collapse table-fixed">
                     <thead className="bg-white/[0.02] border-b border-white/5">
                       <tr className="text-[9px] font-black text-gray-500 uppercase tracking-[0.3em]">
-                        <th className="px-8 py-6 w-32">Risk Identity</th>
+                        <th className="px-8 py-6 w-56">Risk Identity</th>
                         <th className="px-8 py-6 w-32">Category</th>
                         <th className="px-8 py-6 w-40">Discovery Time</th>
-                        <th className="px-8 py-6 w-1/3">Incident Context</th>
+                        <th className="px-8 py-6 w-auto">Incident Context</th>
                         <th className="px-8 py-6 w-28 text-center">Intensity</th>
                         <th className="px-8 py-6 w-28 text-right">Status</th>
                       </tr>
@@ -822,12 +820,12 @@ const AdminGRC = () => {
                       {filteredRisks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((risk) => {
                         const calculatedScore = risk.likelihood * risk.impact;
                         return (
-                          <tr 
+                          <tr
                             key={risk.id}
                             onClick={() => setSelectedRisk(risk)}
                             className={`transition-colors cursor-pointer group ${selectedRisk?.id === risk.id ? 'bg-emerald-500/10' : 'hover:bg-[#1D212A]/30'}`}
                           >
-                            <td className="px-4 py-6 font-mono text-sm font-medium text-emerald-400 truncate pr-4">{risk.id}</td>
+                            <td className="px-4 py-6 font-mono text-sm font-medium text-emerald-400 truncate pr-4">{risk.displayId || risk.id}</td>
                             <td className="px-4 py-6 text-sm truncate pr-4">
                               <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-gray-800 text-slate-300 border border-white/5">{risk.category}</span>
                             </td>
@@ -861,14 +859,14 @@ const AdminGRC = () => {
                       Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredRisks.length)} of {filteredRisks.length} Risks
                     </div>
                     <div className="flex gap-2 shrink-0">
-                      <button 
+                      <button
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                         className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-slate-700 transition-all shadow-lg"
                       >
                         Previous
                       </button>
-                      <button 
+                      <button
                         disabled={currentPage * itemsPerPage >= filteredRisks.length}
                         onClick={() => setCurrentPage(prev => prev + 1)}
                         className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-slate-700 transition-all shadow-lg"
@@ -903,7 +901,7 @@ const AdminGRC = () => {
                   </div>
                 </div>
                 <div className="w-full bg-[#1D212A] h-4 rounded-full border border-[#2B2F3A] p-1">
-                  <div 
+                  <div
                     className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-full rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                     style={{ width: `${calculateOverallCompliance()}%` }}
                   ></div>
@@ -918,21 +916,21 @@ const AdminGRC = () => {
                     return a.findIndex(t => getNormId(t) === getNormId(v)) === i;
                   })
                   .map((ctrl) => (
-                  <div 
-                    key={ctrl.controlId || ctrl.control_id || ctrl.id}
-                    onClick={() => setSelectedControl(ctrl)}
-                    className="relative flex flex-col items-center justify-center p-6 bg-slate-800/50 border border-slate-700 rounded-2xl hover:bg-slate-700 cursor-pointer transition-all aspect-square text-center group shadow-lg hover:shadow-emerald-900/20"
-                  >
-                    <div className={`absolute top-4 right-4 w-3 h-3 rounded-full border-2 border-[#151921] ${getStatusBadgeClass(ctrl.status || ctrl.default_status)}`}></div>
-                    <span className="text-xl md:text-2xl font-black text-white group-hover:text-emerald-400 transition-colors">
-                      {(ctrl.controlId || ctrl.control_id || ctrl.id || "").toString().replace(/^CIS-/, "")}
-                    </span>
-                    <p className="text-[10px] md:text-xs text-slate-400 mt-2 line-clamp-2 uppercase font-bold tracking-tighter">
-                      {ctrl.title || ctrl.name}
-                    </p>
-                    <span className="mt-2 text-[8px] font-black text-slate-500 uppercase tracking-widest">{ctrl.category}</span>
-                  </div>
-                ))}
+                    <div
+                      key={ctrl.controlId || ctrl.control_id || ctrl.id}
+                      onClick={() => setSelectedControl(ctrl)}
+                      className="relative flex flex-col items-center justify-center p-6 bg-slate-800/50 border border-slate-700 rounded-2xl hover:bg-slate-700 cursor-pointer transition-all aspect-square text-center group shadow-lg hover:shadow-emerald-900/20"
+                    >
+                      <div className={`absolute top-4 right-4 w-3 h-3 rounded-full border-2 border-[#151921] ${getStatusBadgeClass(ctrl.status || ctrl.default_status)}`}></div>
+                      <span className="text-xl md:text-2xl font-black text-white group-hover:text-emerald-400 transition-colors">
+                        {(ctrl.controlId || ctrl.control_id || ctrl.id || "").toString().replace(/^CIS-/, "")}
+                      </span>
+                      <p className="text-[10px] md:text-xs text-slate-400 mt-2 line-clamp-2 uppercase font-bold tracking-tighter">
+                        {ctrl.title || ctrl.name}
+                      </p>
+                      <span className="mt-2 text-[8px] font-black text-slate-500 uppercase tracking-widest">{ctrl.category}</span>
+                    </div>
+                  ))}
               </div>
             </div>
           )}
@@ -979,11 +977,10 @@ const AdminGRC = () => {
                         key={btn.id}
                         onClick={() => handleStatusChange(selectedControl.controlId, btn.id)}
                         disabled={updating}
-                        className={`py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all duration-300 shadow-lg ${
-                          (selectedControl.status || selectedControl.default_status) === btn.id 
-                          ? btn.color.split(' ').slice(0, 2).join(' ').replace('/10', '/30') + ' border-current scale-[1.02] ring-2 ring-emerald-500/20' 
-                          : btn.color
-                        } disabled:opacity-50`}
+                        className={`py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all duration-300 shadow-lg ${(selectedControl.status || selectedControl.default_status) === btn.id
+                            ? btn.color.split(' ').slice(0, 2).join(' ').replace('/10', '/30') + ' border-current scale-[1.02] ring-2 ring-emerald-500/20'
+                            : btn.color
+                          } disabled:opacity-50`}
                       >
                         {(selectedControl.status || selectedControl.default_status) === btn.id && <span className="mr-2">✓</span>}
                         {btn.label}
@@ -994,7 +991,7 @@ const AdminGRC = () => {
               </div>
 
               <div className="px-8 py-6 bg-[#1D212A] border-t border-[#2B2F3A] flex justify-center">
-                <button 
+                <button
                   onClick={() => setSelectedControl(null)}
                   className="px-10 py-3 bg-slate-800 hover:bg-slate-700 text-white font-black uppercase text-[10px] tracking-widest rounded-xl transition-all border border-slate-700"
                 >
@@ -1011,8 +1008,8 @@ const AdminGRC = () => {
             <div className="bg-[#151921] border border-[#2B2F3A] w-full max-w-2xl rounded-[30px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
               <div className="px-8 py-6 border-b border-[#2B2F3A] flex justify-between items-center bg-[#1D212A]">
                 <div>
-                  <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">
-                    {selectedRisk.id} - {selectedRisk.category}
+                  <h3 className="text-xl font-black text-white uppercase italic tracking-tighter break-all">
+                    {selectedRisk.displayId || selectedRisk.id} - {selectedRisk.category}
                   </h3>
                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${getStatusBadgeClass(selectedRisk.status)}`}></div>
@@ -1028,7 +1025,7 @@ const AdminGRC = () => {
                 {/* Full Description */}
                 <div>
                   <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 italic">Full Risk Description</h5>
-                  <p className="text-base text-slate-200 leading-relaxed font-medium bg-slate-900/50 p-6 rounded-2xl border border-slate-700/50 shadow-inner">
+                  <p className="text-base text-slate-200 leading-relaxed font-medium bg-slate-900/50 p-6 rounded-2xl border border-slate-700/50 shadow-inner break-words">
                     {selectedRisk.description}
                   </p>
                 </div>
@@ -1061,29 +1058,27 @@ const AdminGRC = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-1">
                             <h5 className="text-sm font-bold text-white">{rec.title}</h5>
-                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border whitespace-nowrap ${
-                              rec.priority === 'critical' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                              rec.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-                              'bg-blue-500/10 text-blue-500 border-blue-500/20'
-                            }`}>{rec.priority}</span>
+                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border whitespace-nowrap ${rec.priority === 'critical' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                rec.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
+                                  'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                              }`}>{rec.priority}</span>
                           </div>
                           <p className="text-xs text-slate-400 leading-relaxed">{rec.body}</p>
                         </div>
-                        
+
                         {rec.action && (
-                          <button 
+                          <button
                             onClick={(e) => { e.stopPropagation(); handleRemediate(selectedRisk.id, rec.action, rec.params); }}
                             disabled={remediating === selectedRisk.id || executedRemediations.has(`${selectedRisk.id}-${rec.action}`)}
-                            className={`whitespace-nowrap px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
-                              executedRemediations.has(`${selectedRisk.id}-${rec.action}`)
-                              ? 'bg-emerald-500 text-black border-emerald-500'
-                              : 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black border-emerald-500/20'
-                            }`}
+                            className={`whitespace-nowrap px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${executedRemediations.has(`${selectedRisk.id}-${rec.action}`)
+                                ? 'bg-emerald-500 text-black border-emerald-500'
+                                : 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black border-emerald-500/20'
+                              }`}
                           >
-                            {executedRemediations.has(`${selectedRisk.id}-${rec.action}`) 
-                              ? '✓ Action Executed' 
-                              : rec.action === 'RESOLVE_INSIDER_THREAT' 
-                                ? 'Restrict Admin' 
+                            {executedRemediations.has(`${selectedRisk.id}-${rec.action}`)
+                              ? '✓ Action Executed'
+                              : rec.action === 'RESOLVE_INSIDER_THREAT'
+                                ? 'Restrict Admin'
                                 : 'Execute Resolve'}
                           </button>
                         )}
@@ -1095,14 +1090,13 @@ const AdminGRC = () => {
 
               {/* Risk Resolution Footer */}
               <div className="px-8 py-6 bg-[#1D212A] border-t border-[#2B2F3A]">
-                <button 
+                <button
                   onClick={() => handleResolveRisk(selectedRisk.id)}
                   disabled={updating || selectedRisk.status === 'Resolved'}
-                  className={`w-full py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all shadow-lg ${
-                    selectedRisk.status === 'Resolved'
-                    ? 'bg-emerald-500/20 text-emerald-400 cursor-not-allowed border border-emerald-500/30'
-                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20 active:scale-[0.98]'
-                  }`}
+                  className={`w-full py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all shadow-lg ${selectedRisk.status === 'Resolved'
+                      ? 'bg-emerald-500/20 text-emerald-400 cursor-not-allowed border border-emerald-500/30'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20 active:scale-[0.98]'
+                    }`}
                 >
                   {selectedRisk.status === 'Resolved' ? '✓ Risk Marked as Resolved' : 'Mark as Resolved'}
                 </button>
@@ -1115,15 +1109,13 @@ const AdminGRC = () => {
       {/* Premium Dark Enterprise Toast Notification */}
       {notification && (
         <div className="fixed bottom-8 right-8 z-[200] animate-in slide-in-from-right-10 fade-in duration-300 pointer-events-none">
-          <div className={`flex items-center gap-4 px-6 py-4 rounded-xl border-l-4 shadow-2xl shadow-black/50 backdrop-blur-xl bg-slate-800 border-slate-700 pointer-events-auto min-w-[320px] ${
-            notification.type === 'error' 
-              ? 'border-l-red-500' 
+          <div className={`flex items-center gap-4 px-6 py-4 rounded-xl border-l-4 shadow-2xl shadow-black/50 backdrop-blur-xl bg-slate-800 border-slate-700 pointer-events-auto min-w-[320px] ${notification.type === 'error'
+              ? 'border-l-red-500'
               : 'border-l-emerald-500'
-          }`}>
+            }`}>
             <div className="flex-1 flex items-center gap-4">
-              <div className={`w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_10px_rgba(0,0,0,0.5)] ${
-                notification.type === 'error' ? 'bg-red-500 shadow-red-500/50' : 'bg-emerald-500 shadow-emerald-500/50'
-              }`}></div>
+              <div className={`w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_10px_rgba(0,0,0,0.5)] ${notification.type === 'error' ? 'bg-red-500 shadow-red-500/50' : 'bg-emerald-500 shadow-emerald-500/50'
+                }`}></div>
               <div className="flex flex-col">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-0.5">
                   System Intelligence
@@ -1133,7 +1125,7 @@ const AdminGRC = () => {
                 </span>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setNotification(null)}
               className="p-1 hover:bg-slate-700 rounded-md text-slate-500 hover:text-white transition-all ml-4"
             >
