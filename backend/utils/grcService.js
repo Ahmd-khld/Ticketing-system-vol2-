@@ -1,4 +1,4 @@
-const { spawn } = require('child_process');
+const child_process = require('child_process');
 const path = require('path');
 
 let ioInstance = null;
@@ -57,12 +57,12 @@ const detectInsiderThreats = async (riskRegister = []) => {
         $group: {
           _id: '$email',
           sensitiveCount: { 
-            $sum: { $cond: [{ $regexMatch: { input: '$action', regex: /^Restricted user:/i } }, 1, 0] } 
+            $sum: { $cond: [{ $regexMatch: { input: '$action', regex: '^Restricted user:', options: 'i' } }, 1, 0] }
           },
           adminAbuseCount: {
             $sum: {
               $cond: [
-                { $and: [{ $eq: ['$status', 'success'] }, { $regexMatch: { input: '$action', regex: /Cleared|Deleted|Restored/i } }] }, 1, 0
+                { $and: [{ $eq: ['$status', 'success'] }, { $regexMatch: { input: '$action', regex: 'Cleared|Deleted|Restored', options: 'i' } }] }, 1, 0
               ]
             }
           },
@@ -84,7 +84,8 @@ const detectInsiderThreats = async (riskRegister = []) => {
     ]);
 
     for (const admin of suspiciousAdmins) {
-      const rawEmail = (admin._id || '').toString().trim();
+      let rawEmail = (admin._id || '').toString().trim();
+      rawEmail = decryptText(rawEmail);
       if (!rawEmail || rawEmail === '-' || rawEmail.endsWith('-') || rawEmail.toLowerCase() === 'admin@smartpark.com') continue;
 
       const adminUser = await User.findOne({ email: rawEmail }).select('_id');
@@ -272,7 +273,7 @@ const runRiskAssessment = async () => {
 
     console.log(`[GRC-Service] Executing live risk re-assessment...`);
 
-    const child = spawn(pythonCommand, [scriptPath, 'CIS_V8']);
+    const child = child_process.spawn(pythonCommand, [scriptPath, 'CIS_V8']);
 
     let stdoutData = '';
     let stderrData = '';

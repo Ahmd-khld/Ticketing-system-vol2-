@@ -117,9 +117,6 @@ ticketSchema.statics.countTicketsByDateRange = async function (from, to) {
   return ticketCountMap;
 };
 
-const Ticket = mongoose.model('Ticket', ticketSchema);
-
-// LIVE DATABASE SYNC: Emit WebSocket events whenever tickets are created or updated
 // We use a dynamic require to avoid circular dependencies with server.js
 const broadcastTicket = (ticket) => {
   try {
@@ -156,4 +153,5 @@ ticketSchema.post('insertMany', (docs) => {
   docs.forEach((doc) => broadcastTicket(doc));
 });
 
+const Ticket = mongoose.model('Ticket', ticketSchema);
 module.exports = Ticket;

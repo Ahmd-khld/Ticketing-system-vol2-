@@ -278,7 +278,7 @@ const sendTicketsViaEmail = async ({ user, tickets, selectedDate, subscriptionPl
 
 const checkout = async (req, res) => {
   try {
-    if (!req.body.quantities || !req.body.subscriptionPlan) {
+    if (!req.body || !req.body.quantities || !req.body.subscriptionPlan) {
       return res.status(400).json({ message: 'Missing quantities or subscription plan' });
     }
 
@@ -696,7 +696,7 @@ const cancelTicket = async (req, res) => {
 
 const rescheduleTicket = async (req, res) => {
   try {
-    const { newDate } = req.body;
+    const newDate = req.body && req.body.newDate;
     if (!newDate) {
       return res.status(400).json({ message: 'New date is required' });
     }

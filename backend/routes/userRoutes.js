@@ -10,10 +10,11 @@ const {
   confirmAccountDeletion,
   cancelAccountDeletion,
   restoreAccount,
+  deleteUserProfile,
 } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 
-router.route('/profile').get(protect, getUserProfile).put(protect, updateUserProfile);
+router.route('/profile').get(protect, getUserProfile).put(protect, updateUserProfile).delete(protect, deleteUserProfile);
 
 router.delete('/profile/cards/:cardId', protect, deleteSavedCard);
 
