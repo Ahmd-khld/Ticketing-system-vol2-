@@ -60,7 +60,7 @@ router.patch('/users/:id/restrict', requireAdmin, toggleRestrictUser);
 router.patch('/users/:id/force-logout-2fa', requireSuperAdmin, forceLogoutAnd2FA);
 router.delete('/users/:id', requireSuperAdmin, deleteUser);
 router.post('/sub-admin', requireSuperAdmin, createSubAdmin);
-router.get('/audit-logs', requireAdmin, validateRequest(adminSearchSchema), getAuditLogs);
+router.get('/audit-logs', requireSuperAdmin, validateRequest(adminSearchSchema), getAuditLogs);
 router.delete('/audit-logs', requireSuperAdmin, clearAuditLogs);
 router.get('/banned-ips', requireAdmin, validateRequest(adminSearchSchema), getBannedIPs);
 router.delete('/banned-ips/:id', requireSuperAdmin, unbanIP);
