@@ -762,7 +762,7 @@ const resolveInsiderThreat = async (req, res) => {
       return res.status(400).json({ message: 'This risk is already resolved.' });
     }
 
-    if (risk.category !== 'INSIDER THREAT') {
+    if (risk.category !== 'Account') {
       return res.status(400).json({ message: 'This endpoint is specifically for Insider Threat resolution.' });
     }
 

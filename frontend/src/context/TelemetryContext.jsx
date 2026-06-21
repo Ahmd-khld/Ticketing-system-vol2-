@@ -17,6 +17,7 @@ export const TelemetryProvider = ({ children }) => {
   const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
   const [unreadAuditCount, setUnreadAuditCount] = useState(0);
   const [unreadBannedCount, setUnreadBannedCount] = useState(0);
+  const [unreadRiskCount, setUnreadRiskCount] = useState(0);
   const [telemetryMatrix, setTelemetryMatrix] = useState([
     { id: 1, system: 'Ambient Lighting', error: 0, warning: 0, success: 0, info: 0, action: 0 },
     { id: 2, system: 'Automated Gate', error: 0, warning: 0, success: 0, info: 0, action: 0 },
@@ -141,12 +142,21 @@ export const TelemetryProvider = ({ children }) => {
       lastFetchRef.current = Date.now(); // Update cache ref so it doesn't immediately re-fetch old data
     };
 
+    const onNewRisk = () => {
+      // Don't increment if already on GRC page
+      if (!window.location.pathname.includes('/grc')) {
+        setUnreadRiskCount(prev => prev + 1);
+      }
+    };
+
     socket.on('hardwareAlert', onHardwareAlert);
     socket.on('hardwareAlertsCleared', onHardwareAlertsCleared);
+    socket.on('new_risk_detected', onNewRisk);
 
     return () => {
       socket.off('hardwareAlert', onHardwareAlert);
       socket.off('hardwareAlertsCleared', onHardwareAlertsCleared);
+      socket.off('new_risk_detected', onNewRisk);
     };
   }, []);
 
@@ -162,6 +172,8 @@ export const TelemetryProvider = ({ children }) => {
       setUnreadAuditCount,
       unreadBannedCount,
       setUnreadBannedCount,
+      unreadRiskCount,
+      setUnreadRiskCount,
       telemetryMatrix, 
       setTelemetryMatrix,
       fetchMatrixData

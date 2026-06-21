@@ -44,7 +44,8 @@ const AdminLayout = () => {
   const { 
     unreadAlertsCount, setUnreadAlertsCount,
     unreadAuditCount, setUnreadAuditCount,
-    unreadBannedCount, setUnreadBannedCount 
+    unreadBannedCount, setUnreadBannedCount,
+    unreadRiskCount, setUnreadRiskCount
   } = useTelemetry();
 
   useEffect(() => {
@@ -110,6 +111,9 @@ const AdminLayout = () => {
     }
     if (location.pathname.includes('/network-access')) {
       setUnreadBannedCount(0);
+    }
+    if (location.pathname.includes('/grc')) {
+      setUnreadRiskCount(0);
     }
   }, [location.pathname]);
 
@@ -200,9 +204,11 @@ const AdminLayout = () => {
         unreadAlertsCount={unreadAlertsCount}
         unreadAuditCount={isSuperAdmin ? unreadAuditCount : 0}
         unreadBannedCount={isSuperAdmin ? unreadBannedCount : 0}
+        unreadRiskCount={isSuperAdmin ? unreadRiskCount : 0}
         onAlertsClick={() => navigate('/admin/dashboard/hardware')}
         onAuditClick={isSuperAdmin ? () => navigate('/admin/dashboard/security') : undefined}
         onBannedClick={isSuperAdmin ? () => navigate('/admin/dashboard/network-access') : undefined}
+        onRiskClick={isSuperAdmin ? () => navigate('/admin/grc') : undefined}
         onLogout={handleLogout}
       />
 

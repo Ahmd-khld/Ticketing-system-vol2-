@@ -29,8 +29,7 @@ const decryptText = (text) => {
 /**
  * Centralized logic to detect insider threats from audit logs and manage recursive risk records.
  */
-const detectInsiderThreats = async () => {};
-;
+const detectInsiderThreats = async (existingRisks) => { return existingRisks || []; };
 
 /**
  * Robust synchronization layer to ensure Python engine output matches 
@@ -43,13 +42,13 @@ const sanitizeAndSyncGRCData = async (parsedData) => {
     // --- 1. NODE-SIDE SECURITY DETECTION (Inject Insider Threats) ---
     parsedData.risk_register = await detectInsiderThreats(parsedData.risk_register || []);
 
-    // --- 2. ENSURE PERSISTENCE (Add any Open risks from DB that Python missed) ---
-    const allOpenDbRisks = await Risk.find({ status: { $ne: 'Resolved' } }).lean();
+    // --- 2. ENSURE PERSISTENCE (Add any risks from DB that Python missed) ---
+    const allDbRisks = await Risk.find().lean();
     const mergedRisks = [...(parsedData.risk_register || [])];
     
-    for (const openRisk of allOpenDbRisks) {
-      if (!mergedRisks.some(r => r.id === openRisk.id)) {
-        mergedRisks.push(openRisk);
+    for (const dbRisk of allDbRisks) {
+      if (!mergedRisks.some(r => r.id === dbRisk.id)) {
+        mergedRisks.push(dbRisk);
       }
     }
 
@@ -185,6 +184,22 @@ const runRiskAssessment = async () => {
         
         // SYNC BEFORE BROADCAST: Fixes the flickering Critical Risk count bug
         const parsedData = await sanitizeAndSyncGRCData(rawData);
+        
+        if (cachedGrcData && cachedGrcData.risk_register && parsedData.risk_register) {
+          const oldRiskIds = new Set(cachedGrcData.risk_register.map(r => r.id));
+          const newRisks = parsedData.risk_register.filter(r => !oldRiskIds.has(r.id));
+          console.log("NEW RISKS LENGTH: ", newRisks.length);
+          if (newRisks.length > 0) {
+            require('fs').appendFileSync('C:/Users/Ahmed Khaled/Desktop/testing/Ticketing-system-vol2-/backend/new_risks_debug.txt', JSON.stringify({ newRisks: newRisks }) + '\n');
+            console.log("NEW RISKS: ", newRisks);
+          }
+          if (newRisks.length > 0 && ioInstance) {
+            newRisks.forEach(risk => {
+              ioInstance.emit('new_risk_detected', risk);
+            });
+          }
+        }
+
         cachedGrcData = parsedData;
 
         if (ioInstance) {

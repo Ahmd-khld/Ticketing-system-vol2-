@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTelemetry } from '../context/TelemetryContext';
 import { useNavigate, Link } from 'react-router-dom';
 import AdminHeader from '../components/AdminHeader';
 import api from '../api';
@@ -179,6 +180,13 @@ const AdminGRC = () => {
   }, [selectedFramework]);
 
   // Reset to page 1 when filters change
+  const { setUnreadRiskCount } = useTelemetry();
+
+  useEffect(() => {
+    // Reset unread risk count when entering the GRC suite
+    setUnreadRiskCount(0);
+  }, [setUnreadRiskCount]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [categoryFilter, scoreFilter, statusFilter, timeFilter]);
@@ -313,7 +321,12 @@ const AdminGRC = () => {
     return Math.round(((implemented + (partial * 0.5)) / complianceControls.length) * 100);
   };
 
-  const formatCategory = (cat) => (cat || 'UNKNOWN').replace(/_/g, ' ').toUpperCase().trim();
+  const formatCategory = (cat) => {
+    if (!cat) return 'UNKNOWN';
+    let c = cat.replace(/_/g, ' ').toUpperCase().trim();
+    if (c === 'RBAC') return 'INSIDER THREAT';
+    return c;
+  };
 
   const filteredRisks = riskRegister
     .filter(r => {
@@ -348,6 +361,7 @@ const AdminGRC = () => {
       // Tie-breaker: sort by most recent detection date
       return new Date(b.createdAt || b.timestamp || 0) - new Date(a.createdAt || a.timestamp || 0);
     });
+
 
   const categories = ['All', ...new Set(riskRegister.map(r => formatCategory(r.category)))];
 
