@@ -102,6 +102,11 @@ const AdminGRC = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
+      if (res.status === 202) {
+        showNotification('GRC Engine is warming up. Assessment in progress...', 'warning');
+        return; // wait for the socket event `grcLiveUpdate` to populate data
+      }
+
       if (res.data) {
         setData(res.data);
         setRiskRegister(res.data.risk_register || []);
@@ -151,6 +156,7 @@ const AdminGRC = () => {
         setRiskRegister(newData.risk_register || []);
         setComplianceControls(newData.compliance || []);
         setError(null);
+        setLoading(false); // remove any blocking loader
       }
     };
 

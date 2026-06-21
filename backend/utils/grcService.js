@@ -4,6 +4,7 @@ const path = require('path');
 let ioInstance = null;
 let isUpdating = false;
 let updateTimeout = null;
+let cachedGrcData = null;
 
 const setIO = (io) => {
   ioInstance = io;
@@ -184,6 +185,7 @@ const runRiskAssessment = async () => {
         
         // SYNC BEFORE BROADCAST: Fixes the flickering Critical Risk count bug
         const parsedData = await sanitizeAndSyncGRCData(rawData);
+        cachedGrcData = parsedData;
 
         if (ioInstance) {
           console.log('[GRC-Service] Broadcasting clean/synced GRC update to all admins');
@@ -217,9 +219,32 @@ const triggerGRCUpdate = () => {
   }, 2000);
 };
 
+/**
+ * Starts a background daemon that periodically runs the risk assessment
+ * without blocking API requests.
+ */
+const startBackgroundDaemon = () => {
+  if (process.env.NODE_ENV === 'test') return;
+  console.log('[GRC-Daemon] Initializing continuous background GRC risk scanner...');
+  
+  // Run an initial scan after 5 seconds to let server boot up completely
+  setTimeout(() => {
+    runRiskAssessment();
+    
+    // Then run continuously every 30 seconds
+    setInterval(() => {
+      runRiskAssessment();
+    }, 30000);
+  }, 5000);
+};
+
+const getCachedGrcData = () => cachedGrcData;
+
 module.exports = {
   setIO,
   triggerGRCUpdate,
   runRiskAssessment,
-  sanitizeAndSyncGRCData
+  sanitizeAndSyncGRCData,
+  startBackgroundDaemon,
+  getCachedGrcData
 };

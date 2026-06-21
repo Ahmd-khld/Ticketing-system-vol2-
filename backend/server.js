@@ -16,6 +16,7 @@ mongoose
     initWhitelist();
     initTicketCron();
     grcService.setIO(io);
+    grcService.startBackgroundDaemon();
   })
   .catch((err) => console.error('MongoDB connection error:', err));
 

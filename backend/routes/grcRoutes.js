@@ -201,94 +201,18 @@ router.get('/summary', protect, async (req, res) => {
     return res.status(403).json({ message: 'Forbidden: Exclusive Super Admin access required' });
   }
 
-  const { framework } = req.query;
-  const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
-  const scriptPath = path.join(__dirname, '..', 'grc_bridge.py');
+  const cachedData = grcService.getCachedGrcData();
 
-  console.log(`DEBUG: Executing GRC Bridge: ${pythonCommand} "${scriptPath}" ${framework || 'CIS_V8'}`);
-
-    const { encryptDeterministic, encryptLegacy } = require('../utils/encryption');
-    const child = spawn(pythonCommand, [scriptPath, framework.toUpperCase()], {
-      env: {
-        ...process.env,
-        ENCRYPTED_SUPER_ADMIN_EMAIL: encryptDeterministic(process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com'),
-        LEGACY_ENCRYPTED_SUPER_ADMIN_EMAIL: encryptLegacy(process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com')
-      }
+  if (cachedData) {
+    return res.json(cachedData);
+  } else {
+    // If cache is missing (e.g. server just started), trigger an update and return 202 Accepted
+    grcService.triggerGRCUpdate();
+    return res.status(202).json({
+      message: 'GRC Engine is warming up. Assessment in progress.',
+      status: 'pending'
     });
-
-  let stdoutData = '';
-  let stderrData = '';
-
-  child.stdout.on('data', (data) => {
-    stdoutData += data.toString();
-  });
-
-  child.stderr.on('data', (data) => {
-    stderrData += data.toString();
-  });
-
-  child.on('close', async (code) => {
-    if (code !== 0) {
-      console.error('PYTHON_CRITICAL_FAILURE:', stderrData || 'Process exited with code ' + code);
-      console.error('Raw Output (stdout):', stdoutData);
-
-      // Try to parse stdout even on error, as bridge might have output JSON error
-      try {
-        const errorJson = JSON.parse(stdoutData);
-        if (errorJson.error) {
-          return res.status(500).json({ 
-            message: 'GRC Engine Logic Error', 
-            error: errorJson.error,
-            details: errorJson.path 
-          });
-        }
-      } catch (e) {}
-
-      return res.status(500).json({ 
-        message: 'GRC Script Execution Failed', 
-        error: stderrData || 'Unknown Python Error',
-        code: code 
-      });
-    }
-
-    try {
-      if (!stdoutData.trim()) {
-        throw new Error('Python script returned empty output');
-      }
-
-      const rawData = JSON.parse(stdoutData);
-
-      // --- FINAL SYNC, DETECTION & DEDUPLICATION ---
-      // Fixes the flickering Critical Risk count bug by using the centralized gatekeeper
-      const sanitizedData = await grcService.sanitizeAndSyncGRCData(rawData);
-
-      if (sanitizedData.error) {
-        console.error('GRC BRIDGE JSON ERROR:', sanitizedData.error);
-        return res.status(500).json({ message: 'GRC Bridge Error', error: sanitizedData.error });
-      }
-
-      res.json(sanitizedData);
-    } catch (parseError) {
-      console.error('GRC JSON PARSE FATAL ERROR');
-      console.error('Parse Error Message:', parseError.message);
-      console.error('Raw Output:', stdoutData);
-      res.status(500).json({ 
-        message: 'Failed to parse GRC engine output', 
-        error: parseError.message,
-        raw: stdoutData,
-        stderr: stderrData
-      });
-    }
-  });
-
-  child.on('error', (err) => {
-    console.error('FAILED_TO_START_PYTHON:', err.message);
-    res.status(500).json({ 
-      message: 'Failed to start Python interpreter', 
-      error: err.message,
-      suggestion: 'Ensure Python is installed and in the system PATH'
-    });
-  });
+  }
 });
 
 const Risk = require('../models/Risk'); // We need a Risk model if we want persistence for resolved states
