@@ -219,9 +219,9 @@ const UsersTab = ({ isSuperAdmin: propIsSuperAdmin }) => {
             </div>
           </div>
 
-          <div className="bg-smart-bg dark:bg-gray-900 z-20 border-b border-smart-light/10">
-            <table className="w-full text-left table-fixed">
-              <thead>
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left table-fixed border-collapse min-w-[1000px]">
+              <thead className="bg-smart-bg dark:bg-gray-900 z-20 border-b border-smart-light/10 sticky top-0 shadow-sm">
                 <tr className="text-smart-gray dark:text-gray-500 text-[10px] font-black uppercase tracking-widest">
                   <th className="px-4 py-4 pl-6 w-1/4">Name</th>
                   <th className="px-4 py-4 w-1/4">Email</th>
@@ -230,24 +230,15 @@ const UsersTab = ({ isSuperAdmin: propIsSuperAdmin }) => {
                   <th className="px-4 py-4 pr-6 text-right">Access Control</th>
                 </tr>
               </thead>
-            </table>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left table-fixed border-collapse">
               <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
-                <AnimatePresence mode="popLayout">
+                <AnimatePresence>
                   {Array.isArray(filteredUsers) && filteredUsers.map((user, idx) => (
                     <motion.tr 
                       key={user._id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.98 }}
-                      transition={{ 
-                        duration: 0.2, 
-                        delay: Math.min(idx * 0.03, 0.3),
-                        ease: "easeOut"
-                      }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
                       className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors italic capitalize"
                     >
                       <td className="px-4 py-3 pl-6 font-black text-smart-dark dark:text-white w-1/4 overflow-hidden truncate">{user.name}</td>
@@ -274,7 +265,7 @@ const UsersTab = ({ isSuperAdmin: propIsSuperAdmin }) => {
                       <td className="px-4 py-3 pr-6 text-right">
                         <div className="flex justify-end items-center space-x-2">
                           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => navigate(`/admin/users/${user._id}/tickets`)} className="px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-200 dark:border-blue-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm">View</motion.button>
-                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleRestrictUser(user._id, user.isRestricted)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${user.isRestricted ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-200 dark:border-orange-800 shadow-sm'}`}>{user.isRestricted ? 'Unrestrict' : 'Restrict'}</motion.button>
+                          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => handleRestrictUser(user._id, user.isRestricted)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all w-[105px] text-center flex-shrink-0 ${user.isRestricted ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-200 dark:border-orange-800 shadow-sm'}`}>{user.isRestricted ? 'Unrestrict' : 'Restrict'}</motion.button>
                           {isSuperAdmin && (
                               <motion.button 
                                 whileHover={{ scale: 1.05 }} 

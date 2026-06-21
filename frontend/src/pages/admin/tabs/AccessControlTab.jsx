@@ -199,9 +199,9 @@ const AccessControlTab = ({ isSuperAdmin }) => {
                 </div>
               </div>
 
-          <div className="bg-smart-bg dark:bg-gray-900 z-20 border-b border-smart-light/10">
-            <table className="w-full text-left table-fixed">
-              <thead>
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left table-fixed border-collapse min-w-[1000px]">
+              <thead className="bg-smart-bg dark:bg-gray-900 z-20 border-b border-smart-light/10 sticky top-0 shadow-sm">
                 <tr className="text-smart-gray dark:text-gray-500 text-[10px] font-black uppercase tracking-widest">
                   <th className="px-4 py-4 pl-6 w-1/4">Name</th>
                   <th className="px-4 py-4 w-1/4">Email</th>
@@ -209,25 +209,22 @@ const AccessControlTab = ({ isSuperAdmin }) => {
                   <th className="px-4 py-4 pr-6 text-right">Access Control</th>
                 </tr>
               </thead>
-            </table>
-          </div>
-
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left table-fixed border-collapse">
               <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
-                <AnimatePresence mode="popLayout">
+                <AnimatePresence>
                   {filteredSubAdmins.map((admin, idx) => (
                     <motion.tr 
                       key={admin._id}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.2) }}
+                      transition={{ duration: 0.2 }}
                       className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors"
                     >
-                      <td className="px-4 py-3 pl-6 font-black text-smart-dark dark:text-white italic capitalize w-1/4 overflow-hidden truncate">
-                        {admin.name}
-                        {admin.email === superAdminEmail && <span className="ml-3 text-[9px] bg-purple-500/20 text-purple-500 px-2 py-0.5 rounded-full uppercase tracking-widest not-italic">System Owner</span>}
+                      <td className="px-4 py-3 pl-6 font-black text-smart-dark dark:text-white italic capitalize w-1/4">
+                        <div className="flex items-center min-w-0">
+                          <span className="truncate">{admin.name}</span>
+                          {admin.email === superAdminEmail && <span className="ml-3 text-[9px] bg-purple-500/20 text-purple-500 px-2 py-0.5 rounded-full uppercase tracking-widest not-italic flex-shrink-0">System Owner</span>}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-smart-gray dark:text-gray-400 font-medium w-1/4 overflow-hidden truncate">{admin.email}</td>
                       <td className="px-4 py-3 text-center w-[150px]">
@@ -264,7 +261,7 @@ const AccessControlTab = ({ isSuperAdmin }) => {
                               whileHover={{ scale: 1.05 }} 
                               whileTap={{ scale: 0.95 }} 
                               onClick={() => handleRestrictUser(admin._id, admin.isRestricted)} 
-                              className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${admin.isRestricted ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-200 dark:border-orange-800 shadow-sm'}`}
+                              className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all w-[105px] text-center flex-shrink-0 ${admin.isRestricted ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md' : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-200 dark:border-orange-800 shadow-sm'}`}
                             >
                               {admin.isRestricted ? 'Unrestrict' : 'Restrict'}
                             </motion.button>

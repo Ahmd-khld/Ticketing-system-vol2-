@@ -1280,23 +1280,64 @@ const getMonthlySales = async (req, res) => {
     const pipeline = [
       { $match: matchStage },
       {
-        $group: {
-          _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
-          totalTickets: { $sum: 1 },
-          revenue: { $sum: '$price' },
-        },
-      },
-      { $sort: { '_id.year': -1, '_id.month': -1 } },
+        $facet: {
+          monthlySales: [
+            {
+              $group: {
+                _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+                totalTickets: { $sum: 1 },
+                revenue: { $sum: '$price' },
+              },
+            },
+            { $sort: { '_id.year': -1, '_id.month': -1 } },
+            ...(!req.query.startDate && !req.query.endDate ? [{ $limit: 12 }] : [])
+          ],
+          ticketTypes: [
+            { $group: { _id: '$ticketType', count: { $sum: 1 } } }
+          ],
+          channels: [
+            { $group: { _id: '$paymentMethod', count: { $sum: 1 }, revenue: { $sum: '$price' } } }
+          ],
+          plans: [
+            { $group: { _id: '$subscriptionPlan', count: { $sum: 1 } } }
+          ],
+          statuses: [
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+          ],
+          dayOfWeek: [
+            { $group: { _id: { $dayOfWeek: '$createdAt' }, count: { $sum: 1 } } },
+            { $sort: { _id: 1 } }
+          ],
+          reschedules: [
+            {
+              $group: {
+                _id: {
+                  $cond: [
+                    { $gt: [{ $size: { $ifNull: ['$rescheduleHistory', []] } }, 0] },
+                    'Rescheduled',
+                    'Never Rescheduled'
+                  ]
+                },
+                count: { $sum: 1 }
+              }
+            }
+          ],
+          promoCodes: [
+            {
+              $group: {
+                _id: { $cond: [{ $ifNull: ['$promoCode', false] }, 'Used Promo', 'No Promo'] },
+                count: { $sum: 1 }
+              }
+            }
+          ]
+        }
+      }
     ];
 
-    // Only limit to 12 months if no custom date range is provided
-    if (!req.query.startDate && !req.query.endDate) {
-      pipeline.push({ $limit: 12 });
-    }
-
     const sales = await Ticket.aggregate(pipeline);
+    const facetData = sales[0];
 
-    const formattedSales = sales
+    const formattedSales = facetData.monthlySales
       .map((s) => ({
         month: new Date(s._id.year, s._id.month - 1).toLocaleString('default', {
           month: 'short',
@@ -1312,7 +1353,18 @@ const getMonthlySales = async (req, res) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
 
-    res.status(200).json(formattedSales);
+    res.status(200).json({
+      monthlySales: formattedSales,
+      miningData: {
+        ticketTypes: facetData.ticketTypes || [],
+        payments: facetData.channels || [],
+        subscriptions: facetData.plans || [],
+        statuses: facetData.statuses || [],
+        daysOfWeek: facetData.dayOfWeek || [],
+        reschedules: facetData.reschedules || [],
+        promos: facetData.promoCodes || [],
+      }
+    });
   } catch (error) {
     console.error('Monthly Sales Error:', error);
     res.status(500).json({ message: 'Error fetching monthly sales' });

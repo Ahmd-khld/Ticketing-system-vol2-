@@ -182,14 +182,14 @@ const SecurityTab = () => {
             <div className="overflow-x-auto flex-grow custom-scrollbar">
               <table className="w-full text-left table-fixed border-collapse">
                 <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
-                  <AnimatePresence mode="popLayout">
+                  <AnimatePresence>
                     {auditLogs.map((log, idx) => (
                       <motion.tr 
                         key={log._id}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.2) }}
+                        transition={{ duration: 0.2 }}
                         onClick={() => setSelectedLog(log)}
                         className="hover:bg-smart-light/5 dark:hover:bg-gray-700/50 transition-all duration-200 group cursor-pointer"
                       >

@@ -115,14 +115,14 @@ const SystemTab = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-smart-bg dark:divide-gray-700">
-            <AnimatePresence mode="popLayout">
+            <AnimatePresence>
               {backups.map((backup, idx) => (
                 <motion.tr 
                   key={backup._id}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.2) }}
+                  transition={{ duration: 0.2 }}
                   className="hover:bg-smart-bg/50 dark:hover:bg-gray-700/50 transition-colors"
                 >
                   <td className="px-8 py-4 font-mono text-[11px] text-smart-dark dark:text-white truncate italic">{backup.filename}</td>
