@@ -207,10 +207,14 @@ router.get('/summary', protect, async (req, res) => {
 
   console.log(`DEBUG: Executing GRC Bridge: ${pythonCommand} "${scriptPath}" ${framework || 'CIS_V8'}`);
 
-  const args = [scriptPath];
-  if (framework) args.push(framework);
-
-  const child = spawn(pythonCommand, args);
+    const { encryptDeterministic, encryptLegacy } = require('../utils/encryption');
+    const child = spawn(pythonCommand, [scriptPath, framework.toUpperCase()], {
+      env: {
+        ...process.env,
+        ENCRYPTED_SUPER_ADMIN_EMAIL: encryptDeterministic(process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com'),
+        LEGACY_ENCRYPTED_SUPER_ADMIN_EMAIL: encryptLegacy(process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com')
+      }
+    });
 
   let stdoutData = '';
   let stderrData = '';

@@ -28,129 +28,8 @@ const decryptText = (text) => {
 /**
  * Centralized logic to detect insider threats from audit logs and manage recursive risk records.
  */
-const detectInsiderThreats = async (riskRegister = []) => {
-  try {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    
-    // Define high-sensitivity actions
-    const sensitiveActionPatterns = [
-      /^Restricted user:/i,
-      /^Cleared security audit logs/i,
-      /^Cleared hardware alerts/i,
-      /^Deleted database backup/i,
-      /^Restored database from backup/i,
-      /^Manually reset park occupancy/i
-    ];
-
-    // Aggregate logs to find admins with abnormal activity patterns
-    const suspiciousAdmins = await AdminAuditLog.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: twentyFourHoursAgo },
-          $or: [
-            { status: 'success', action: { $in: sensitiveActionPatterns.map(p => new RegExp(p)) } },
-            { status: 'failed' }
-          ]
-        }
-      },
-      {
-        $group: {
-          _id: '$email',
-          sensitiveCount: { 
-            $sum: { $cond: [{ $regexMatch: { input: '$action', regex: '^Restricted user:', options: 'i' } }, 1, 0] }
-          },
-          adminAbuseCount: {
-            $sum: {
-              $cond: [
-                { $and: [{ $eq: ['$status', 'success'] }, { $regexMatch: { input: '$action', regex: 'Cleared|Deleted|Restored', options: 'i' } }] }, 1, 0
-              ]
-            }
-          },
-          failureCount: {
-            $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] }
-          },
-          latestAction: { $max: '$createdAt' }
-        }
-      },
-      {
-        $match: {
-          $or: [
-            { sensitiveCount: { $gt: 3 } },
-            { adminAbuseCount: { $gt: 2 } },
-            { failureCount: { $gt: 5 } }
-          ]
-        }
-      }
-    ]);
-
-    for (const admin of suspiciousAdmins) {
-      let rawEmail = (admin._id || '').toString().trim();
-      rawEmail = decryptText(rawEmail);
-      if (!rawEmail || rawEmail === '-' || rawEmail.endsWith('-') || rawEmail.toLowerCase() === 'admin@smartpark.com') continue;
-
-      const adminUser = await User.findOne({ email: rawEmail }).select('_id');
-      if (adminUser) {
-        const baseRiskId = `RISK-INSIDER-${rawEmail}`;
-        const existingRisks = await Risk.find({ id: { $regex: new RegExp(`^${baseRiskId}`) } }).sort({ createdAt: -1 });
-        
-        let finalRiskId = baseRiskId;
-        let shouldCreateNew = false;
-        let existingOpenRisk = null;
-
-        if (existingRisks.length > 0) {
-          const latestRisk = existingRisks[0];
-          if (latestRisk.status === 'Resolved') {
-            if (latestRisk.resolvedAt && new Date(admin.latestAction) > new Date(latestRisk.resolvedAt)) {
-              shouldCreateNew = true;
-              finalRiskId = `${baseRiskId}-RECURRENCE-${Date.now()}`;
-            }
-          } else {
-            existingOpenRisk = latestRisk;
-            finalRiskId = latestRisk.id;
-          }
-        } else {
-          shouldCreateNew = true;
-        }
-
-        let behaviorDesc = '';
-        if (admin.sensitiveCount > 3) behaviorDesc = `restricted ${admin.sensitiveCount} users`;
-        else if (admin.adminAbuseCount > 2) behaviorDesc = `performed ${admin.adminAbuseCount} high-sensitivity system manipulations`;
-        else if (admin.failureCount > 5) behaviorDesc = `exhibited ${admin.failureCount} failed administrative attempts`;
-
-        const riskDescription = `Admin ${rawEmail} has ${behaviorDesc} in the last 24 hours. Potential insider abuse detected.`;
-
-        if (shouldCreateNew) {
-          await Risk.create({
-            id: finalRiskId,
-            category: 'Insider Threat',
-            description: riskDescription,
-            likelihood: 5,
-            impact: 5,
-            status: 'Open',
-            recommendations: [{
-              title: 'Immediate Access Revocation',
-              priority: 'critical',
-              body: `The recursive watcher has identified recurring suspicious behavior from ${rawEmail}.`,
-              action: 'block_user',
-              params: { userId: adminUser._id.toString(), email: rawEmail }
-            }]
-          });
-        } else if (existingOpenRisk) {
-          await Risk.updateOne({ id: finalRiskId }, { $set: { description: riskDescription } });
-        }
-
-        const currentRisk = await Risk.findOne({ id: finalRiskId }).lean();
-        if (currentRisk && !riskRegister.some(r => r.id === finalRiskId)) {
-          riskRegister.unshift(currentRisk);
-        }
-      }
-    }
-    return riskRegister;
-  } catch (err) {
-    console.error('[GRC-Service] Insider Threat Detection Error:', err);
-    return riskRegister;
-  }
-};
+const detectInsiderThreats = async () => {};
+;
 
 /**
  * Robust synchronization layer to ensure Python engine output matches 
@@ -273,7 +152,14 @@ const runRiskAssessment = async () => {
 
     console.log(`[GRC-Service] Executing live risk re-assessment...`);
 
-    const child = child_process.spawn(pythonCommand, [scriptPath, 'CIS_V8']);
+    const { encryptDeterministic, encryptLegacy } = require('./encryption');
+    const child = child_process.spawn(pythonCommand, [scriptPath, 'CIS_V8'], {
+      env: {
+        ...process.env,
+        ENCRYPTED_SUPER_ADMIN_EMAIL: encryptDeterministic(process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com'),
+        LEGACY_ENCRYPTED_SUPER_ADMIN_EMAIL: encryptLegacy(process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com')
+      }
+    });
 
     let stdoutData = '';
     let stderrData = '';

@@ -130,6 +130,7 @@ const AdminGRC = () => {
 
   useEffect(() => {
     fetchGRCData(true, selectedFramework);
+    fetchAdherenceScore();
 
     // Ensure socket is connected
     if (!socket.connected) {
@@ -140,6 +141,7 @@ const AdminGRC = () => {
     const handleLiveUpdate = () => {
       console.log('Live event detected, re-evaluating risks...');
       fetchGRCData(false, selectedFramework);
+      fetchAdherenceScore();
     };
 
     const handleGrcLiveUpdate = (newData) => {
@@ -157,7 +159,10 @@ const AdminGRC = () => {
     socket.on('grcLiveUpdate', handleGrcLiveUpdate);
 
     // Keep a slower background poll as a fallback (every 30 seconds instead of 15)
-    const interval = setInterval(() => fetchGRCData(false, selectedFramework), 30000);
+    const interval = setInterval(() => {
+      fetchGRCData(false, selectedFramework);
+      fetchAdherenceScore();
+    }, 30000);
 
     return () => {
       clearInterval(interval);
@@ -269,9 +274,9 @@ const AdminGRC = () => {
   };
 
   const getOverallScoreBadgeClass = (score) => {
-    if (score >= 20) return 'bg-red-500/20 text-red-500 border-red-500/30';
-    if (score >= 12) return 'bg-orange-500/20 text-orange-500 border-orange-500/30';
-    if (score >= 6) return 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30';
+    if (score >= 17) return 'bg-red-500/20 text-red-500 border-red-500/30';
+    if (score >= 10) return 'bg-orange-500/20 text-orange-500 border-orange-500/30';
+    if (score >= 5) return 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30';
     return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
   };
 
@@ -302,16 +307,19 @@ const AdminGRC = () => {
     return Math.round(((implemented + (partial * 0.5)) / complianceControls.length) * 100);
   };
 
+  const formatCategory = (cat) => (cat || 'UNKNOWN').replace(/_/g, ' ').toUpperCase().trim();
+
   const filteredRisks = riskRegister
     .filter(r => {
       const score = r.likelihood * r.impact;
-      const matchesCategory = categoryFilter === 'All' || r.category === categoryFilter;
+      const matchesCategory = categoryFilter === 'All' || formatCategory(r.category) === categoryFilter;
       const matchesStatus = statusFilter === 'All' || (r.status || '').toLowerCase() === statusFilter.toLowerCase();
 
       let matchesScore = true;
-      if (scoreFilter === 'High') matchesScore = score > 15;
-      else if (scoreFilter === 'Medium') matchesScore = score >= 5 && score <= 15;
-      else if (scoreFilter === 'Low') matchesScore = score < 5;
+      if (scoreFilter === 'Critical') matchesScore = score >= 17;
+      else if (scoreFilter === 'High') matchesScore = score >= 10 && score <= 16;
+      else if (scoreFilter === 'Medium') matchesScore = score >= 5 && score <= 9;
+      else if (scoreFilter === 'Low') matchesScore = score <= 4;
 
       let matchesTime = true;
       const rDate = new Date(r.createdAt || r.timestamp || 0);
@@ -335,7 +343,7 @@ const AdminGRC = () => {
       return new Date(b.createdAt || b.timestamp || 0) - new Date(a.createdAt || a.timestamp || 0);
     });
 
-  const categories = ['All', ...new Set(riskRegister.map(r => r.category))];
+  const categories = ['All', ...new Set(riskRegister.map(r => formatCategory(r.category)))];
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -646,19 +654,10 @@ const AdminGRC = () => {
                     <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                   </div>
                   <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] block mb-2">Critical Risks</span>
-                  <div className="text-5xl font-black italic text-red-500 tracking-tighter">{riskRegister.filter(r => (r.likelihood * r.impact) >= 20 && (r.status || '').toLowerCase() !== 'resolved').length}</div>
+                  <div className="text-5xl font-black italic text-red-500 tracking-tighter">{riskRegister.filter(r => (r.likelihood * r.impact) >= 17 && (r.status || '').toLowerCase() !== 'resolved').length}</div>
                 </div>
 
-                <div className="bg-[#0F1218] border border-white/5 p-8 rounded-3xl relative overflow-hidden group shadow-2xl">
-                  <div className="absolute top-0 right-0 p-6 text-emerald-500/20 group-hover:text-emerald-500/40 group-hover:scale-110 transition-all duration-700">
-                    <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  </div>
-                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] block mb-2">Compliance Score</span>
-                  <div className="text-5xl font-black italic text-emerald-500 tracking-tighter">{calculateOverallCompliance()}%</div>
-                  <div className="mt-4 w-full bg-white/5 h-1 rounded-full overflow-hidden">
-                    <div className="bg-emerald-500 h-full rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000" style={{ width: `${calculateOverallCompliance()}%` }}></div>
-                  </div>
-                </div>
+
               </div>
 
               {/* Heatmap */}
@@ -753,9 +752,10 @@ const AdminGRC = () => {
                       className="w-full bg-white/[0.03] border border-white/5 group-hover/filter:border-white/10 text-slate-200 text-[10px] font-black uppercase tracking-widest rounded-xl px-4 py-3.5 outline-none transition-all cursor-pointer appearance-none"
                     >
                       <option value="All" className="bg-[#0F1218] text-white">All Severities</option>
-                      <option value="High" className="bg-[#0F1218] text-white">High Criticality</option>
-                      <option value="Medium" className="bg-[#0F1218] text-white">Medium Priority</option>
-                      <option value="Low" className="bg-[#0F1218] text-white">Low Observation</option>
+                      <option value="Critical" className="bg-[#0F1218] text-white">Critical / Extreme</option>
+                      <option value="High" className="bg-[#0F1218] text-white">High Severity</option>
+                      <option value="Medium" className="bg-[#0F1218] text-white">Moderate</option>
+                      <option value="Low" className="bg-[#0F1218] text-white">Low Risk</option>
                     </select>
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-600">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
@@ -827,7 +827,7 @@ const AdminGRC = () => {
                           >
                             <td className="px-4 py-6 font-mono text-sm font-medium text-emerald-400 truncate pr-4">{risk.displayId || risk.id}</td>
                             <td className="px-4 py-6 text-sm truncate pr-4">
-                              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-gray-800 text-slate-300 border border-white/5">{risk.category}</span>
+                              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-gray-800 text-slate-300 border border-white/5">{formatCategory(risk.category)}</span>
                             </td>
                             <td className="px-4 py-6 text-[10px] font-bold text-slate-400 truncate pr-4">
                               {risk.createdAt || risk.timestamp ? new Date(risk.createdAt || risk.timestamp).toLocaleString() : 'Recent Scan'}
@@ -1008,8 +1008,8 @@ const AdminGRC = () => {
             <div className="bg-[#151921] border border-[#2B2F3A] w-full max-w-2xl rounded-[30px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
               <div className="px-8 py-6 border-b border-[#2B2F3A] flex justify-between items-center bg-[#1D212A]">
                 <div>
-                  <h3 className="text-xl font-black text-white uppercase italic tracking-tighter break-all">
-                    {selectedRisk.displayId || selectedRisk.id} - {selectedRisk.category}
+                  <h3 className="text-xl font-black text-white uppercase italic tracking-tighter break-words pr-8">
+                    {selectedRisk.displayId || selectedRisk.id} <span className="opacity-50">|</span> {formatCategory(selectedRisk.category)}
                   </h3>
                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${getStatusBadgeClass(selectedRisk.status)}`}></div>
@@ -1054,32 +1054,34 @@ const AdminGRC = () => {
                   </h4>
                   <div className="grid grid-cols-1 gap-4">
                     {selectedRisk.recommendations?.map((rec, idx) => (
-                      <div key={idx} className="bg-slate-800/40 border border-slate-700/50 p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 group/rec transition-all hover:bg-slate-800/60">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-1">
-                            <h5 className="text-sm font-bold text-white">{rec.title}</h5>
-                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border whitespace-nowrap ${rec.priority === 'critical' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                rec.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-                                  'bg-blue-500/10 text-blue-500 border-blue-500/20'
-                              }`}>{rec.priority}</span>
+                      <div key={idx} className="relative overflow-hidden p-6 rounded-[20px] bg-[#11141A] border border-white/5 hover:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 group/rec transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                        {/* Priority glow accent line */}
+                        <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all duration-500 group-hover/rec:w-1.5 ${rec.priority === 'critical' ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]' : rec.priority === 'high' ? 'bg-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)]' : 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]'}`}></div>
+
+                        <div className="flex-1 pl-2">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h5 className="text-sm font-black text-white italic tracking-wide">{rec.title}</h5>
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border whitespace-nowrap tracking-widest ${rec.priority === 'critical' ? 'bg-red-500/10 text-red-500 border-red-500/20' : rec.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>{rec.priority}</span>
                           </div>
-                          <p className="text-xs text-slate-400 leading-relaxed">{rec.body}</p>
+                          <p className="text-xs text-slate-400 leading-relaxed font-medium">{rec.body}</p>
                         </div>
 
                         {rec.action && (
                           <button
                             onClick={(e) => { e.stopPropagation(); handleRemediate(selectedRisk.id, rec.action, rec.params); }}
                             disabled={remediating === selectedRisk.id || executedRemediations.has(`${selectedRisk.id}-${rec.action}`)}
-                            className={`whitespace-nowrap px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${executedRemediations.has(`${selectedRisk.id}-${rec.action}`)
-                                ? 'bg-emerald-500 text-black border-emerald-500'
-                                : 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black border-emerald-500/20'
+                            className={`relative shrink-0 overflow-hidden whitespace-nowrap px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 border shadow-lg ${executedRemediations.has(`${selectedRisk.id}-${rec.action}`)
+                                ? 'bg-emerald-500 text-[#0F1218] border-emerald-500 scale-95 opacity-80'
+                                : 'bg-[#0F1218] hover:bg-emerald-500 text-emerald-400 hover:text-[#0F1218] border-emerald-500/30 hover:border-emerald-500 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]'
                               }`}
                           >
-                            {executedRemediations.has(`${selectedRisk.id}-${rec.action}`)
-                              ? '✓ Action Executed'
-                              : rec.action === 'RESOLVE_INSIDER_THREAT'
-                                ? 'Restrict Admin'
-                                : 'Execute Resolve'}
+                            <span className="relative z-10 flex items-center justify-center gap-2">
+                              {executedRemediations.has(`${selectedRisk.id}-${rec.action}`)
+                                ? <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg> Executed</>
+                                : rec.action === 'RESOLVE_INSIDER_THREAT'
+                                  ? 'Restrict Admin'
+                                  : 'Execute Resolve'}
+                            </span>
                           </button>
                         )}
                       </div>

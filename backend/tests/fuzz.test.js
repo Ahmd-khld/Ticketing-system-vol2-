@@ -12,7 +12,7 @@ afterAll(async () => {
 });
 
 describe('Fuzzing Authentication Endpoints', () => {
-  jest.setTimeout(60000);
+  jest.setTimeout();
 
   it('should never crash on malformed or extreme inputs to /api/register', async () => {
     await fc.assert(

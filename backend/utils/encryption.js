@@ -25,6 +25,15 @@ const encryptDeterministic = (text) => {
   return iv.toString('hex') + ':' + authTag + ':' + encrypted;
 };
 
+const encryptLegacy = (text) => {
+  if (!text) return text;
+  const iv = crypto.createHash('md5').update(text).digest();
+  const cipher = crypto.createCipheriv('aes-256-cbc', keyBuffer, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return iv.toString('hex') + ':' + encrypted;
+};
+
 const decryptDeterministic = (text) => {
   if (!text || !text.includes(':')) return text;
   
@@ -82,4 +91,5 @@ module.exports = {
   decryptDeterministic,
   encryptRandom,
   decryptRandom,
+  encryptLegacy,
 };

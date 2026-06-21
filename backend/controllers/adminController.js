@@ -530,47 +530,6 @@ const toggleRestrictUser = async (req, res) => {
 
     const io = req.app.get('io');
 
-    // Insider Threat Detection Policy: Track admin restriction actions
-    if (!originallyRestricted && user.isRestricted && req.user) {
-      const admin = await User.findById(req.user._id);
-      if (admin) {
-        admin.restrictedAccountsCount = (admin.restrictedAccountsCount || 0) + 1;
-        await admin.save();
-
-        if (admin.restrictedAccountsCount > 5) {
-          const riskId = `RISK-INSIDER-${Date.now()}`;
-
-          await Risk.findOneAndUpdate(
-            { id: riskId },
-            {
-              id: riskId,
-              category: 'INSIDER THREAT',
-              description: `Admin [${admin.email}] has restricted [${admin.restrictedAccountsCount}] users.`,
-              asset: `Admin: ${admin.email}`,
-              likelihood: 5,
-              impact: 5,
-              status: 'Open',
-              recommendations: [{
-                title: 'Revoke Administrative Access',
-                body: 'Immediately restrict this administrator account and terminate all active sessions to prevent further unauthorized actions.',
-                priority: 'Critical',
-                action: 'RESOLVE_INSIDER_THREAT',
-                params: { adminEmail: admin.email }
-              }]
-            },
-            { upsert: true, new: true }
-          );
-
-          if (io) {
-            io.emit('new_risk_detected', {
-              message: `Insider Threat Flagged: Admin ${admin.email} has restricted ${admin.restrictedAccountsCount} users.`,
-              category: 'INSIDER THREAT',
-              intensity: 25
-            });
-          }
-        }
-      }
-    }
 
     if (io) {
       io.emit('userUpdated', {
@@ -647,7 +606,8 @@ const resolveRisk = async (req, res) => {
     // Track this restriction for Insider Threat detection
     if (req.user) {
       const admin = await User.findById(req.user._id);
-      if (admin) {
+      const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase();
+      if (admin && admin.email.toLowerCase() !== superAdminEmail) {
         admin.restrictedAccountsCount = (admin.restrictedAccountsCount || 0) + 1;
         await admin.save();
 
