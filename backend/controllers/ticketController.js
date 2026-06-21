@@ -305,6 +305,13 @@ const checkout = async (req, res) => {
       }
     }
 
+    const transactionLimit = parseInt(process.env.MAX_PER_TRANSACTION) || 10;
+    if (requestedCount > transactionLimit) {
+      return res.status(400).json({
+        message: `You can only buy a maximum of ${transactionLimit} tickets per transaction.`,
+      });
+    }
+
     if (subscriptionPlan === 'one-time') {
       if (!selectedDate) {
         return res.status(400).json({ message: 'Selected date is required for one-time tickets' });

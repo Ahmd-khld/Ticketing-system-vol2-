@@ -37,7 +37,7 @@ api.interceptors.response.use(
         localStorage.removeItem('adminEmail');
         localStorage.removeItem('userId');
         const message = data?.message || 'Your account has been restricted.';
-        window.location.href = `/?restrictionReason=${encodeURIComponent(message)}`;
+        window.location.href = `/?message=${encodeURIComponent(message)}`;
       }
       
       // Handle Unauthorized/Expired/Malformed Token (401)

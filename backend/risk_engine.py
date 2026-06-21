@@ -240,9 +240,9 @@ def _derive_rbac_risks() -> list[str]:
     for r in rows:
         email = r.get("email", "unknown")
         if str(email).strip().lower() == SUPER_ADMIN_EMAIL.strip().lower(): continue
-        risk_id = f"RISK-RBAC-{str(email).replace('@', '-').replace('.', '-')}"
+        risk_id = f"RISK-INSIDER-{str(email).replace('@', '-').replace('.', '-')}"
         models.upsert_auto_risk(
-            id=risk_id, category="rbac",
+            id=risk_id, category="Account",
             description=f"User '{email}' has unauthorized elevated permissions.",
             asset="Access Control System", likelihood=5, impact=5,
             status="Open", recommendations=_get_recommendations("rbac", {"targetEmail": email})
@@ -509,7 +509,7 @@ def _derive_audit_risks() -> list[str]:
             if count >= 2:
                 risk_id = f"RISK-AUDIT-PROV-{str(email).replace('@','-').replace('.','-')}"
                 models.upsert_auto_risk(
-                    id=risk_id, category="rbac",
+                    id=risk_id, category="Account",
                     description=f"Admin {email} has provisioned {count} new sub-admins in a short period. Possible rogue admin or account takeover.",
                     asset="IAM Control Plane", likelihood=5, impact=5, status="Open",
                     recommendations=[
@@ -525,7 +525,7 @@ def _derive_audit_risks() -> list[str]:
             if count > 5:
                 risk_id = f"RISK-INSIDER-{str(email).replace('@','-').replace('.','-')}"
                 models.upsert_auto_risk(
-                    id=risk_id, category="INSIDER THREAT",
+                    id=risk_id, category="Account",
                     description=f"Admin {email} has restricted {count} users recently. Potential insider abuse detected.",
                     asset="User Management System", likelihood=5, impact=5, status="Open",
                     recommendations=[

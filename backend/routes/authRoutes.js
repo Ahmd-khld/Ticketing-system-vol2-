@@ -182,8 +182,12 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
     }
 
     if (user.isRestricted) {
+      const message = user.role === 'sub-admin' 
+        ? 'Your account has been restricted. Please contact the super admin for support with your issue.'
+        : (user.restrictionReason || 'Your account has been restricted. Please contact support.');
+      
       return res.status(403).json({
-        message: user.restrictionReason || 'Your account has been restricted. Please contact support.',
+        message,
         isRestricted: true,
         isLocked: !!user.deletionDate,
       });
@@ -198,6 +202,16 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
     }
 
     if (await user.matchPassword(password)) {
+      if (user.role === 'sub-admin' && (user.otpAttempts || 0) >= 5) {
+        user.isRestricted = true;
+        user.restrictionReason = 'Security threshold exceeded. Account restricted due to repeated 2FA failures.';
+        await user.save();
+        return res.status(403).json({
+          message: 'Your account has been restricted. Please contact the super admin for support with your issue.',
+          isRestricted: true,
+        });
+      }
+
       if (!user.isVerified) {
         // Generate and send NEW OTP on login attempt if not verified
         const otpCode = await issueOtp(user.email);
@@ -229,7 +243,10 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
       const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@smartpark.com').toLowerCase().trim();
       const isSuperAdmin = user.email.toLowerCase().trim() === superAdminEmail;
 
-      if (!isSuperAdmin && (isForced2FA || (isInactive && is2FAExpired))) {
+      // Enforce 2FA on every login for sub-admins
+      const isSubAdmin = user.role === 'sub-admin';
+
+      if (!isSuperAdmin && (isSubAdmin || isForced2FA || (isInactive && is2FAExpired))) {
         // Generate and send 2FA OTP
         const otpCode = await issueOtp(user.email);
 
@@ -240,7 +257,7 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
             otp: otpCode,
             heading: 'Security Check: 2FA Required',
             greeting: `Hello ${user.name},`,
-            intro: `${isForced2FA ? 'Your account requires 2FA for every login.' : "It's been a while since your last login."} For your security, please use the following code to complete your login:`,
+            intro: `${isSubAdmin ? 'Your administrative role requires 2FA for every login.' : (isForced2FA ? 'Your account requires 2FA for every login.' : "It's been a while since your last login.")} For your security, please use the following code to complete your login:`,
           }),
         }).catch(err => console.error('Background email failed:', err.message));
 
@@ -249,7 +266,7 @@ router.post('/login', authLimiter, validateRequest(loginValidationSchema), async
         await user.save();
 
         return res.status(200).json({
-          message: isForced2FA ? '2FA required' : '2FA required due to inactivity',
+          message: isSubAdmin ? '2FA required for administrators' : (isForced2FA ? '2FA required' : '2FA required due to inactivity'),
           twoFactorRequired: true,
           email: user.email,
           role: user.role,
@@ -325,24 +342,34 @@ router.post('/verify-2fa', async (req, res, next) => {
       if (user.otpAttempts >= 5) {
         // Phase 1: Automated Detection
         const Risk = require('../models/Risk');
-        const riskId = `RISK-2FA-${Date.now()}`;
         
-        await Risk.create({
-          id: riskId,
-          category: 'BRUTE_FORCE',
-          description: `Account [${user.email}] exceeded 5 consecutive 2FA failures. Manual security review required.`,
+        let targetRisk = await Risk.findOne({
+          category: 'Account',
           asset: `User Account: ${user._id}`,
-          likelihood: 5,
-          impact: 5,
-          status: 'Open',
-          recommendations: [{
-            title: 'Execute Resolve',
-            body: 'Restrict account, force password reset, and terminate all active sessions.',
-            priority: 'High',
-            action: 'RESOLVE_BRUTE_FORCE',
-            params: { userId: user._id.toString() }
-          }]
+          status: 'Open'
         });
+        const riskId = targetRisk ? targetRisk.id : `RISK-2FA-${Date.now()}`;
+        
+        await Risk.findOneAndUpdate(
+          { id: riskId },
+          {
+            id: riskId,
+            category: 'Account',
+            description: `Account [${user.email}] exceeded 5 consecutive 2FA failures. Manual security review required.`,
+            asset: `User Account: ${user._id}`,
+            likelihood: 5,
+            impact: 5,
+            status: 'Open',
+            recommendations: [{
+              title: 'Execute Resolve',
+              body: 'Restrict account, force password reset, and terminate all active sessions.',
+              priority: 'High',
+              action: 'RESOLVE_BRUTE_FORCE',
+              params: { userId: user._id.toString() }
+            }]
+          },
+          { upsert: true, new: true }
+        );
 
         await user.save();
         return res.status(403).json({ 

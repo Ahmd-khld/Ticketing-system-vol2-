@@ -502,7 +502,7 @@ const scanUserTicket = async (req, res) => {
 
 const toggleRestrictUser = async (req, res) => {
   const { id } = req.params;
-  const { reason } = req.body;
+  const { reason, isRestricted: bodyIsRestricted, restrictionReason } = req.body;
 
   // Validate ObjectId to prevent CastErrors
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -524,8 +524,14 @@ const toggleRestrictUser = async (req, res) => {
     }
 
     const originallyRestricted = user.isRestricted;
-    user.isRestricted = !user.isRestricted;
-    user.restrictionReason = user.isRestricted ? (reason || 'No reason provided') : '';
+    if (bodyIsRestricted !== undefined) {
+      user.isRestricted = bodyIsRestricted;
+      user.restrictionReason = user.isRestricted ? (restrictionReason || reason || 'No reason provided') : '';
+    } else {
+      user.isRestricted = !originallyRestricted;
+      user.restrictionReason = user.isRestricted ? (reason || 'No reason provided') : '';
+    }
+    
     await user.save();
 
     const io = req.app.get('io');
@@ -553,6 +559,64 @@ const toggleRestrictUser = async (req, res) => {
       req,
       `${user.isRestricted ? 'Restricted' : 'Unrestricted'} user: ${user.email}${user.isRestricted ? ' Reason: ' + user.restrictionReason : ''}`
     );
+
+    // INSIDER THREAT DETECTION
+    if (user.isRestricted && req.user) {
+      const adminUser = await User.findById(req.user._id);
+      if (adminUser && adminUser.email !== superAdminEmail) {
+        adminUser.restrictedAccountsCount = (adminUser.restrictedAccountsCount || 0) + 1;
+        await adminUser.save();
+
+        const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
+        const AdminAuditLog = require('../models/AdminAuditLog');
+        
+        const restrictionCount = await AdminAuditLog.countDocuments({
+          email: req.user.email,
+          action: { $regex: '^Restricted user:' },
+          createdAt: { $gte: fiveHoursAgo }
+        });
+
+        if (restrictionCount >= 5 || adminUser.restrictedAccountsCount > 5) {
+          const Risk = require('../models/Risk');
+          
+          let targetRisk = await Risk.findOne({
+            category: 'Account',
+            asset: `Admin: ${req.user.email}`,
+            status: 'Open'
+          });
+          const riskId = targetRisk ? targetRisk.id : `RISK-INSIDER-${Date.now()}`;
+
+          await Risk.findOneAndUpdate(
+            { id: riskId },
+            {
+              id: riskId,
+              category: 'Account',
+              description: `Admin [${req.user.email}] has restricted [${restrictionCount}] users within a 5-hour interval.`,
+              asset: `Admin: ${req.user.email}`,
+              likelihood: 5,
+              impact: 5,
+              status: 'Open',
+              recommendations: [{
+                title: 'Revoke Administrative Access',
+                body: 'Immediately restrict this administrator account and terminate all active sessions to prevent further unauthorized actions.',
+                priority: 'Critical',
+                action: 'RESOLVE_INSIDER_THREAT',
+                params: { adminEmail: req.user.email }
+              }]
+            },
+            { upsert: true, new: true }
+          );
+
+          if (io) {
+            io.emit('new_risk_detected', {
+              message: `Insider Threat Flagged: Admin ${req.user.email} has restricted ${restrictionCount} users.`,
+              category: 'INSIDER THREAT',
+              intensity: 25
+            });
+          }
+        }
+      }
+    }
 
     res.status(200).json({
       message: `User has been ${user.isRestricted ? 'restricted' : 'unrestricted'}`,
@@ -612,14 +676,20 @@ const resolveRisk = async (req, res) => {
         await admin.save();
 
         if (admin.restrictedAccountsCount > 5) {
-          const riskId = `RISK-INSIDER-${Date.now()}`;
           const Risk = require('../models/Risk');
+
+          let targetRisk = await Risk.findOne({
+            category: 'Account',
+            asset: `Admin: ${admin.email}`,
+            status: 'Open'
+          });
+          const riskId = targetRisk ? targetRisk.id : `RISK-INSIDER-${Date.now()}`;
 
           await Risk.findOneAndUpdate(
             { id: riskId },
             {
               id: riskId,
-              category: 'INSIDER THREAT',
+              category: 'Account',
               description: `Admin [${admin.email}] has restricted [${admin.restrictedAccountsCount}] users.`,
               asset: `Admin: ${admin.email}`,
               likelihood: 5,
