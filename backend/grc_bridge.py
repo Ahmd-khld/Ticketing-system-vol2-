@@ -41,7 +41,7 @@ def main():
         # Aggregate data from both engines
         # derive_risks() will now calculate and save real risks to MongoDB
         counts = derive_risks()
-        compliance_data = posture(framework=framework)
+        compliance_data = posture(framework=None)
         
         # Fetch the actual risk register from MongoDB (previously hardcoded)
         risk_register = list_risks()

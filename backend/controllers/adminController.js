@@ -32,7 +32,7 @@ const getAdminStats = async (req, res) => {
     endOfDay.setHours(23, 59, 59, 999);
 
     // Run all 5 database queries in parallel for maximum performance
-    const [totalTicketsSold, mostSoldAgg, activeUsers, purchasingUsersAgg, currentOccupancy] =
+    const [totalTicketsSold, mostSoldAgg, activeUsers, purchasingUserIds, currentOccupancy] =
       await Promise.all([
         Ticket.countDocuments(),
         Ticket.aggregate([
@@ -43,7 +43,7 @@ const getAdminStats = async (req, res) => {
           { $limit: 1 },
         ]),
         User.countDocuments({ role: 'user' }),
-        Ticket.aggregate([{ $group: { _id: '$userId' } }, { $count: 'totalPurchasingUsers' }]),
+        Ticket.distinct('userId'),
         Ticket.countDocuments({
           $or: [
             { status: 'USED', updatedAt: { $gte: startOfDay, $lte: endOfDay } },
@@ -61,9 +61,8 @@ const getAdminStats = async (req, res) => {
       mostSoldTicket = `${typeCap} (${top._id.plan || 'unknown'})`;
     }
 
-    // Extract the counted value from the aggregation array safely
-    const purchasingUsers =
-      purchasingUsersAgg.length > 0 ? purchasingUsersAgg[0].totalPurchasingUsers : 0;
+    // Only count purchasing users who actually exist and have the 'user' role
+    const purchasingUsers = await User.countDocuments({ _id: { $in: purchasingUserIds }, role: 'user' });
     const maxCapacity = parseInt(process.env.DAILY_CAPACITY) || 1000;
     const capacityPercentage = Math.round((currentOccupancy / maxCapacity) * 100);
 
@@ -1815,8 +1814,10 @@ const generateMockData = async (req, res) => {
     // 1. CLEAR SLATE (Only for mock data to avoid destroying real data)
     try {
       await User.deleteMany({ email: /mockuser.*@example\.com/ });
+      const realUsers = await User.find({ email: { $not: /mockuser.*@example\.com/ } }).select('_id');
+      const realUserIds = realUsers.map((u) => u._id);
       await Ticket.deleteMany({
-        userId: { $nin: await User.find({ email: { $not: /mockuser.*@example\.com/ } }).select('_id') },
+        userId: { $nin: realUserIds },
       });
       await HardwareAlert.deleteMany({ message: /Simulation alert/ });
       await AdminAuditLog.deleteMany({ email: /mockuser.*@example\.com/ });

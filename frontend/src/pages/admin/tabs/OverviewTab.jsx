@@ -284,7 +284,7 @@ const OverviewTab = () => {
             <circle cx="50" cy="50" r="46" fill="transparent" stroke="currentColor" strokeWidth="8" className="text-gray-100 dark:text-gray-700" />
             <motion.circle 
               initial={{ strokeDashoffset: 289 }}
-              animate={{ strokeDashoffset: 289 - (289 * (stats?.activeUsers ? stats.purchasingUsers / stats.activeUsers : 0)) / 100 }}
+              animate={{ strokeDashoffset: 289 - (289 * (stats?.activeUsers ? Math.min(stats.purchasingUsers / stats.activeUsers, 1) : 0)) }}
               transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
               cx="50" cy="50" r="46" fill="transparent" stroke="currentColor" strokeWidth="8" strokeDasharray="289" strokeLinecap="round" className="text-smart-glow" 
             />

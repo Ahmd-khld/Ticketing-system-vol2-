@@ -315,10 +315,19 @@ const AdminGRC = () => {
   };
 
   const calculateOverallCompliance = () => {
-    if (!complianceControls.length) return 0;
-    const implemented = complianceControls.filter(c => (c.status || c.default_status || '').toLowerCase() === 'implemented').length;
-    const partial = complianceControls.filter(c => (c.status || c.default_status || '').toLowerCase() === 'partial').length;
-    return Math.round(((implemented + (partial * 0.5)) / complianceControls.length) * 100);
+    const frameworkControls = complianceControls.filter(c => c.framework === selectedFramework);
+    if (!frameworkControls.length) return 0;
+
+    const uniqueControls = frameworkControls.filter((v, i, a) => {
+      const getNormId = (c) => (c.controlId || c.control_id || c.id || "").toString().replace(/^CIS-/, "");
+      return a.findIndex(t => getNormId(t) === getNormId(v)) === i;
+    });
+
+    if (!uniqueControls.length) return 0;
+
+    const implemented = uniqueControls.filter(c => (c.status || c.default_status || '').toLowerCase() === 'implemented').length;
+    const partial = uniqueControls.filter(c => (c.status || c.default_status || '').toLowerCase() === 'partial').length;
+    return Math.round(((implemented + (partial * 0.5)) / uniqueControls.length) * 100);
   };
 
   const formatCategory = (cat) => {
@@ -446,43 +455,6 @@ const AdminGRC = () => {
 
             <div className="flex flex-col lg:flex-row">
 
-              {/* Left Wing: Scope & Governance */}
-              <div className="lg:w-1/4 p-8 border-r border-white/10 bg-gradient-to-b from-transparent to-white/[0.02]">
-                <div className="space-y-8">
-                  <div>
-                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                      Governance Scope
-                    </h2>
-                    <div className="relative group/select">
-                      <select
-                        value={selectedFramework}
-                        onChange={(e) => setSelectedFramework(e.target.value)}
-                        className="w-full bg-white/[0.05] border border-white/20 hover:border-emerald-500/50 text-white text-xs font-black uppercase tracking-widest rounded-xl px-4 py-4 outline-none transition-all cursor-pointer appearance-none shadow-2xl"
-                      >
-                        {frameworks.map(f => (
-                          <option key={f.id} value={f.id} className="bg-[#0F1218] text-white">{f.name}</option>
-                        ))}
-                      </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-400 group-hover/select:scale-110 transition-all">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white/[0.04] border border-white/10 rounded-xl p-3">
-                      <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">Status</span>
-                      <span className="text-[10px] font-black text-emerald-400 uppercase">Authenticated</span>
-                    </div>
-                    <div className="bg-white/[0.04] border border-white/10 rounded-xl p-3">
-                      <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">Mode</span>
-                      <span className="text-[10px] font-black text-blue-400 uppercase">Recursive</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Center: Intelligence Engine */}
               <div className="flex-1 p-8 bg-white/[0.02]">
                 <div className="flex flex-col xl:flex-row items-center gap-12">
@@ -549,44 +521,7 @@ const AdminGRC = () => {
                 </div>
               </div>
 
-              {/* Right Wing: Posture Telemetry */}
-              <div className="lg:w-1/5 p-8 border-l border-white/10 bg-gradient-to-b from-transparent to-white/[0.02]">
-                <div className="space-y-6">
-                  <div>
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] block mb-4 border-b border-white/10 pb-2">Risk Telemetry</span>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-5xl font-black italic text-white tracking-tighter leading-none">{calculateOverallCompliance()}%</span>
-                      <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest animate-pulse">Nominal</span>
-                    </div>
-                  </div>
 
-                  <div className="space-y-4">
-                    <div className="group/stat">
-                      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest mb-1.5">
-                        <span className="text-slate-500 group-hover/stat:text-slate-300 transition-colors">Threat Area</span>
-                        <span className="text-red-400">{riskRegister.filter(r => (r.status || '').toLowerCase() !== 'resolved').length}</span>
-                      </div>
-                      <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden shadow-inner">
-                        <div className="h-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)] rounded-full" style={{ width: '40%' }}></div>
-                      </div>
-                    </div>
-                    <div className="group/stat">
-                      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest mb-1.5">
-                        <span className="text-slate-500 group-hover/stat:text-slate-300 transition-colors">Implemented</span>
-                        <span className="text-blue-400">{complianceControls.filter(c => (c.status || '').toLowerCase() === 'implemented').length}</span>
-                      </div>
-                      <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden shadow-inner">
-                        <div className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.4)] rounded-full" style={{ width: '65%' }}></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 flex items-center justify-between border-t border-white/10">
-                    <span className="text-[8px] font-mono text-emerald-500/70">SEC_POSTURE: STABLE</span>
-                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
-                  </div>
-                </div>
-              </div>
 
             </div>
           </div>
@@ -902,35 +837,73 @@ const AdminGRC = () => {
 
           {activeTab === 'Compliance Posture' && (
             <div className="space-y-6">
-              {/* Adherence Overview */}
-              <div className="bg-[#151921] border border-[#2B2F3A] p-8 rounded-2xl shadow-xl">
-                <div className="flex justify-between items-end mb-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Governance Scope Block */}
+                <div className="lg:col-span-1 bg-[#151921] border border-[#2B2F3A] p-8 rounded-2xl shadow-xl flex flex-col justify-center space-y-6">
                   <div>
-                    <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Framework Adherence</h3>
-                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">
-                      {frameworks.find(f => f.id === selectedFramework)?.name || selectedFramework} | {
-                        complianceControls.filter((v, i, a) => {
-                          const getNormId = (c) => (c.controlId || c.control_id || c.id || "").toString().replace(/^CIS-/, "");
-                          return a.findIndex(t => getNormId(t) === getNormId(v)) === i;
-                        }).length
-                      } Controls
-                    </p>
+                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                      Governance Scope
+                    </h3>
+                    <div className="relative">
+                      <select
+                        value={selectedFramework}
+                        onChange={(e) => setSelectedFramework(e.target.value)}
+                        className="w-full appearance-none bg-[#1D212A] border border-white/10 rounded-xl px-4 py-3 text-xs font-black text-white uppercase tracking-widest focus:outline-none focus:border-emerald-500/50 shadow-inner"
+                      >
+                        {frameworks.map(f => (
+                          <option key={f.id} value={f.id}>{f.name}</option>
+                        ))}
+                      </select>
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-4xl font-black text-emerald-500 italic">{calculateOverallCompliance()}%</span>
+
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+                      <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</span>
+                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Authenticated</span>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+                      <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Mode</span>
+                      <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Recursive</span>
+                    </div>
                   </div>
                 </div>
-                <div className="w-full bg-[#1D212A] h-4 rounded-full border border-[#2B2F3A] p-1">
-                  <div
-                    className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-full rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                    style={{ width: `${calculateOverallCompliance()}%` }}
-                  ></div>
+
+                {/* Adherence Overview */}
+                <div className="lg:col-span-2 bg-[#151921] border border-[#2B2F3A] p-8 rounded-2xl shadow-xl flex flex-col justify-center">
+                  <div className="flex justify-between items-end mb-4">
+                    <div>
+                      <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Framework Adherence</h3>
+                      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">
+                        {frameworks.find(f => f.id === selectedFramework)?.name || selectedFramework} | {
+                          complianceControls.filter(c => c.framework === selectedFramework).filter((v, i, a) => {
+                            const getNormId = (c) => (c.controlId || c.control_id || c.id || "").toString().replace(/^CIS-/, "");
+                            return a.findIndex(t => getNormId(t) === getNormId(v)) === i;
+                          }).length
+                        } Controls
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-4xl font-black text-emerald-500 italic">{calculateOverallCompliance()}%</span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-[#1D212A] h-4 rounded-full border border-[#2B2F3A] p-1 mt-4">
+                    <div
+                      className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-full rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                      style={{ width: `${calculateOverallCompliance()}%` }}
+                    ></div>
+                  </div>
                 </div>
               </div>
 
               {/* Responsive Grid of Tiles */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {complianceControls
+                  .filter(c => c.framework === selectedFramework)
                   .filter((v, i, a) => {
                     const getNormId = (c) => (c.controlId || c.control_id || c.id || "").toString().replace(/^CIS-/, "");
                     return a.findIndex(t => getNormId(t) === getNormId(v)) === i;

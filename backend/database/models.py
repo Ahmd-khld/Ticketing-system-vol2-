@@ -73,7 +73,9 @@ def compliance_summary(framework='CIS_V8'):
     return {r['_id']: r['count'] for r in results}
 
 def list_compliance_controls(framework='CIS_V8', status=None):
-    query = {"framework": framework}
+    query = {}
+    if framework:
+        query["framework"] = framework
     if status:
         query["status"] = status
     return list(compliance_coll.find(query, {"_id": 0}))
